@@ -48,7 +48,7 @@ const receipt = z.object({
 })
 export type Receipt = z.output<typeof receipt>
 
-const signatureEnvelope: z.ZodMiniType = z.union([
+const signatureEnvelope: z.ZodMiniType = u.oneOf([
   z.object({
     r: u.hex(),
     s: u.hex(),
@@ -81,26 +81,6 @@ const signatureEnvelope: z.ZodMiniType = z.union([
 ])
 export type SignatureEnvelope = z.output<typeof signatureEnvelope>
 
-const keyAuthorization = z.object({
-  chainId: u.hex(),
-  expiry: z.optional(z.nullable(u.hex())),
-  keyId: u.address(),
-  keyType: z.union([z.literal('secp256k1'), z.literal('p256'), z.literal('webAuthn')]),
-  limits: z.optional(
-    z.readonly(
-      z.array(
-        z.object({
-          amount: u.hex(),
-          period: u.hex(),
-          token: u.address(),
-        }),
-      ),
-    ),
-  ),
-  signature: signatureEnvelope,
-})
-export type KeyAuthorization = z.output<typeof keyAuthorization>
-
 const transactionRequest = z.object({
   accessList: z.optional(
     z.array(z.object({ address: u.address(), storageKeys: z.array(u.hex()) })),
@@ -115,18 +95,14 @@ const transactionRequest = z.object({
       ),
     ),
   ),
-  data: z.optional(u.hex()),
   feePayer: z.optional(z.union([z.boolean(), z.url()])),
   feeToken: z.optional(u.address()),
   from: z.optional(u.address()),
   gas: z.optional(u.bigint()),
-  keyAuthorization: z.optional(keyAuthorization),
   maxFeePerGas: z.optional(u.bigint()),
   maxPriorityFeePerGas: z.optional(u.bigint()),
   nonce: z.optional(u.number()),
   nonceKey: z.optional(u.bigint()),
-  to: z.optional(u.address()),
-  type: z.optional(u.hex()),
   validAfter: z.optional(u.number()),
   validBefore: z.optional(u.number()),
   value: z.optional(u.bigint()),

@@ -43,28 +43,26 @@ export function local(options: local.Options): Adapter {
         params.store.setState({ accounts, activeAccount: 0, status: 'connected' })
         return accounts
       },
-      async sendTransaction({ calls, to, data, gas, nonce, maxFeePerGas, maxPriorityFeePerGas }) {
+      async sendTransaction(parameters) {
         const account = params.getAccount(undefined, { signable: true })
         const client = params.getClient()
+        const { feePayer, ...rest } = parameters
         return await sendTransaction(client, {
           account,
-          calls: calls ?? [{ to, data }],
-          gas,
-          nonce,
-          maxFeePerGas,
-          maxPriorityFeePerGas,
+          // TODO: support fee payer
+          // feePayer,
+          ...rest,
         })
       },
-      async sendTransactionSync({ calls, to, data, gas, nonce, maxFeePerGas, maxPriorityFeePerGas }) {
+      async sendTransactionSync(parameters) {
         const account = params.getAccount(undefined, { signable: true })
         const client = params.getClient()
+        const { feePayer, ...rest } = parameters
         return await sendTransactionSync(client, {
           account,
-          calls: calls ?? [{ to, data }],
-          gas,
-          nonce,
-          maxFeePerGas,
-          maxPriorityFeePerGas,
+          // TODO: support fee payer
+          // feePayer,
+          ...rest,
         })
       },
       async switchChain({ chainId }) {
