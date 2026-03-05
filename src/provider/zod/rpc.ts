@@ -8,8 +8,9 @@ const capabilities = {
     z.object({
       method: z.optional(z.union([z.literal('register'), z.literal('login')])),
     }),
-  )
+  ),
 }
+export type Capabilities = z.output<typeof capabilities>
 
 const log = z.object({
   address: u.address(),
@@ -22,6 +23,7 @@ const log = z.object({
   transactionHash: u.hex(),
   transactionIndex: u.hex(),
 })
+export type Log = z.output<typeof log>
 
 const receipt = z.object({
   blobGasPrice: z.optional(u.hex()),
@@ -44,8 +46,65 @@ const receipt = z.object({
   transactionIndex: u.hex(),
   type: u.hex(),
 })
+export type Receipt = z.output<typeof receipt>
+
+const signatureEnvelope: z.ZodMiniType = z.union([
+  z.object({
+    r: u.hex(),
+    s: u.hex(),
+    yParity: u.hex(),
+    v: z.optional(u.hex()),
+    type: z.literal('secp256k1'),
+  }),
+  z.object({
+    preHash: z.boolean(),
+    pubKeyX: u.hex(),
+    pubKeyY: u.hex(),
+    r: u.hex(),
+    s: u.hex(),
+    type: z.literal('p256'),
+  }),
+  z.object({
+    pubKeyX: u.hex(),
+    pubKeyY: u.hex(),
+    r: u.hex(),
+    s: u.hex(),
+    type: z.literal('webAuthn'),
+    webauthnData: u.hex(),
+  }),
+  z.object({
+    type: z.literal('keychain'),
+    userAddress: u.address(),
+    signature: z.lazy(() => signatureEnvelope),
+    version: z.optional(z.union([z.literal('v1'), z.literal('v2')])),
+  }),
+])
+export type SignatureEnvelope = z.output<typeof signatureEnvelope>
+
+const keyAuthorization = z.object({
+  chainId: u.hex(),
+  expiry: z.optional(z.nullable(u.hex())),
+  keyId: u.address(),
+  keyType: z.union([z.literal('secp256k1'), z.literal('p256'), z.literal('webAuthn')]),
+  limits: z.optional(
+    z.readonly(
+      z.array(
+        z.object({
+          amount: u.hex(),
+          period: u.hex(),
+          token: u.address(),
+        }),
+      ),
+    ),
+  ),
+  signature: signatureEnvelope,
+})
+export type KeyAuthorization = z.output<typeof keyAuthorization>
 
 const transactionRequest = z.object({
+  accessList: z.optional(
+    z.array(z.object({ address: u.address(), storageKeys: z.array(u.hex()) })),
+  ),
   calls: z.optional(
     z.readonly(
       z.array(
@@ -57,12 +116,22 @@ const transactionRequest = z.object({
     ),
   ),
   data: z.optional(u.hex()),
+  feePayer: z.optional(z.union([z.boolean(), z.url()])),
+  feeToken: z.optional(u.address()),
+  from: z.optional(u.address()),
   gas: z.optional(u.bigint()),
+  keyAuthorization: z.optional(keyAuthorization),
   maxFeePerGas: z.optional(u.bigint()),
   maxPriorityFeePerGas: z.optional(u.bigint()),
   nonce: z.optional(u.number()),
+  nonceKey: z.optional(u.bigint()),
   to: z.optional(u.address()),
+  type: z.optional(u.hex()),
+  validAfter: z.optional(u.number()),
+  validBefore: z.optional(u.number()),
+  value: z.optional(u.bigint()),
 })
+export type TransactionRequest = z.output<typeof transactionRequest>
 
 export const eth_accounts = Schema.defineItem({
   method: z.literal('eth_accounts'),
@@ -98,6 +167,9 @@ export const eth_sendTransactionSync = Schema.defineItem({
   returns: receipt,
 })
 export type eth_sendTransactionSync = Schema.DefineItem<typeof eth_sendTransactionSync>
+export namespace eth_sendTransactionSync {
+  export type decoded = z.output<eth_sendTransactionSync>
+}
 
 export const wallet_connect = Schema.defineItem({
   method: z.literal('wallet_connect'),

@@ -1,5 +1,8 @@
 import { Hex } from 'ox'
 import * as z from 'zod/mini'
+import type * as zc from 'zod/v4/core'
+
+import type { OneOf } from '../../internal/types.js'
 
 /** EVM address (`0x...`). */
 export const address = () => z.templateLiteral(['0x', z.string()])
@@ -20,3 +23,16 @@ export const number = () =>
     decode: (value) => Hex.toNumber(value),
     encode: (value) => Hex.fromNumber(value),
   })
+
+/** `z.union` that narrows the output type so only one branch is active at a time. */
+export function oneOf<const type extends readonly zc.SomeType[]>(
+  options: type,
+): Omit<z.ZodMiniUnion<type>, '_zod'> & {
+  _zod: Omit<z.ZodMiniUnion<type>['_zod'], 'output'> & {
+    output: z.ZodMiniUnion<type>['_zod']['output'] extends object
+      ? OneOf<z.ZodMiniUnion<type>['_zod']['output']>
+      : z.ZodMiniUnion<type>['_zod']['output']
+  }
+} {
+  return z.union(options) as never
+}

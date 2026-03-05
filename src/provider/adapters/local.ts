@@ -65,7 +65,7 @@ export function local(options: local.Options): Adapter {
           nonce,
           maxFeePerGas,
           maxPriorityFeePerGas,
-        }) as never
+        })
       },
       async switchChain({ chainId }) {
         params.store.setState({ chainId })

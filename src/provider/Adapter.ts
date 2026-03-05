@@ -20,7 +20,7 @@ export type Adapter = {
     /** Send a transaction. */
     sendTransaction: (request: ActionRequest<Rpc.eth_sendTransaction>) => Promise<`0x${string}`>
     /** Send a transaction and wait for the receipt. */
-    sendTransactionSync: (request: ActionRequest<Rpc.eth_sendTransactionSync>) => Promise<Rpc.eth_sendTransactionSync['returns']>
+    sendTransactionSync: (request: ActionRequest<Rpc.eth_sendTransactionSync>) => Promise<Rpc.eth_sendTransactionSync.decoded>
     /** Switch the active chain. */
     switchChain: (params: switchChain.Parameters) => Promise<void>
   }
