@@ -3,6 +3,14 @@ import * as z from 'zod/mini'
 import * as Schema from '../Schema.js'
 import * as u from './utils.js'
 
+const capabilities = {
+  connect: z.optional(
+    z.object({
+      method: z.optional(z.union([z.literal('register'), z.literal('login')])),
+    }),
+  )
+}
+
 const log = z.object({
   address: u.address(),
   blockHash: u.hex(),
@@ -37,6 +45,25 @@ const receipt = z.object({
   type: u.hex(),
 })
 
+const transactionRequest = z.object({
+  calls: z.optional(
+    z.readonly(
+      z.array(
+        z.object({
+          data: z.optional(u.hex()),
+          to: z.optional(u.address()),
+        }),
+      ),
+    ),
+  ),
+  data: z.optional(u.hex()),
+  gas: z.optional(u.bigint()),
+  maxFeePerGas: z.optional(u.bigint()),
+  maxPriorityFeePerGas: z.optional(u.bigint()),
+  nonce: z.optional(u.number()),
+  to: z.optional(u.address()),
+})
+
 export const eth_accounts = Schema.defineItem({
   method: z.literal('eth_accounts'),
   params: undefined,
@@ -60,35 +87,14 @@ export type eth_requestAccounts = Schema.DefineItem<typeof eth_requestAccounts>
 
 export const eth_sendTransaction = Schema.defineItem({
   method: z.literal('eth_sendTransaction'),
-  params: z.readonly(
-    z.tuple([
-      z.object({
-        calls: z.optional(
-          z.readonly(
-            z.array(
-              z.object({
-                data: z.optional(u.hex()),
-                to: z.optional(u.address()),
-              }),
-            ),
-          ),
-        ),
-        data: z.optional(u.hex()),
-        gas: z.optional(u.bigint()),
-        maxFeePerGas: z.optional(u.bigint()),
-        maxPriorityFeePerGas: z.optional(u.bigint()),
-        nonce: z.optional(u.number()),
-        to: z.optional(u.address()),
-      }),
-    ]),
-  ),
+  params: z.readonly(z.tuple([transactionRequest])),
   returns: u.hex(),
 })
 export type eth_sendTransaction = Schema.DefineItem<typeof eth_sendTransaction>
 
 export const eth_sendTransactionSync = Schema.defineItem({
   method: z.literal('eth_sendTransactionSync'),
-  params: eth_sendTransaction.params,
+  params: z.readonly(z.tuple([transactionRequest])),
   returns: receipt,
 })
 export type eth_sendTransactionSync = Schema.DefineItem<typeof eth_sendTransactionSync>
@@ -99,11 +105,7 @@ export const wallet_connect = Schema.defineItem({
     z.readonly(
       z.tuple([
         z.object({
-          capabilities: z.optional(
-            z.object({
-              method: z.optional(z.union([z.literal('register'), z.literal('login')])),
-            }),
-          ),
+          capabilities: capabilities.connect,
         }),
       ]),
     ),
