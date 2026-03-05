@@ -86,3 +86,83 @@ describe('eth_sendTransactionSync', () => {
     `)
   })
 })
+
+describe('wallet_sendCalls', () => {
+  test('default: sends calls and returns id', async () => {
+    const provider = Provider.create({
+      adapter: local(),
+      chains: [chain],
+    })
+
+    await provider.request({ method: 'eth_requestAccounts' })
+
+    const result = await provider.request({
+      method: 'wallet_sendCalls',
+      params: [
+        {
+          calls: [{ to: core_accounts[1].address }],
+          chainId: `0x${chain.id.toString(16)}`,
+          version: '2.0.0',
+        },
+      ],
+    })
+
+    expect(result.id).toMatch(/^0x[0-9a-f]+$/)
+  })
+
+  test('behavior: with sync capability returns id and sync capability', async () => {
+    const provider = Provider.create({
+      adapter: local(),
+      chains: [chain],
+    })
+
+    await provider.request({ method: 'eth_requestAccounts' })
+
+    const result = await provider.request({
+      method: 'wallet_sendCalls',
+      params: [
+        {
+          calls: [{ to: core_accounts[1].address }],
+          capabilities: { sync: true },
+          chainId: `0x${chain.id.toString(16)}`,
+          version: '2.0.0',
+        },
+      ],
+    })
+
+    expect(result.id).toMatch(/^0x[0-9a-f]+$/)
+    expect(result.capabilities).toMatchInlineSnapshot(`
+      {
+        "sync": true,
+      }
+    `)
+  })
+
+  test('behavior: sync false uses async path', async () => {
+    const provider = Provider.create({
+      adapter: local(),
+      chains: [chain],
+    })
+
+    await provider.request({ method: 'eth_requestAccounts' })
+
+    const result = await provider.request({
+      method: 'wallet_sendCalls',
+      params: [
+        {
+          calls: [{ to: core_accounts[1].address }],
+          capabilities: { sync: false },
+          chainId: `0x${chain.id.toString(16)}`,
+          version: '2.0.0',
+        },
+      ],
+    })
+
+    expect(result.id).toMatch(/^0x[0-9a-f]+$/)
+    expect(result.capabilities).toMatchInlineSnapshot(`
+      {
+        "sync": false,
+      }
+    `)
+  })
+})

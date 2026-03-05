@@ -81,20 +81,16 @@ const signatureEnvelope: z.ZodMiniType = u.oneOf([
 ])
 export type SignatureEnvelope = z.output<typeof signatureEnvelope>
 
+const call = z.object({
+  data: z.optional(u.hex()),
+  to: z.optional(u.address()),
+})
+
 const transactionRequest = z.object({
   accessList: z.optional(
     z.array(z.object({ address: u.address(), storageKeys: z.array(u.hex()) })),
   ),
-  calls: z.optional(
-    z.readonly(
-      z.array(
-        z.object({
-          data: z.optional(u.hex()),
-          to: z.optional(u.address()),
-        }),
-      ),
-    ),
-  ),
+  calls: z.optional(z.readonly(z.array(call))),
   feePayer: z.optional(z.union([z.boolean(), z.url()])),
   feeToken: z.optional(u.address()),
   from: z.optional(u.address()),
@@ -146,6 +142,31 @@ export type eth_sendTransactionSync = Schema.DefineItem<typeof eth_sendTransacti
 export namespace eth_sendTransactionSync {
   export type decoded = z.output<eth_sendTransactionSync>
 }
+
+const sendCallsCapabilities = z.optional(z.object({ sync: z.optional(z.boolean()) }))
+
+export const wallet_sendCalls = Schema.defineItem({
+  method: z.literal('wallet_sendCalls'),
+  params: z.optional(
+    z.readonly(
+      z.tuple([
+        z.object({
+          atomicRequired: z.optional(z.boolean()),
+          calls: z.readonly(z.array(call)),
+          capabilities: sendCallsCapabilities,
+          chainId: z.optional(u.hex()),
+          from: z.optional(u.address()),
+          version: z.optional(z.string()),
+        }),
+      ]),
+    ),
+  ),
+  returns: z.object({
+    capabilities: sendCallsCapabilities,
+    id: z.string(),
+  }),
+})
+export type wallet_sendCalls = Schema.DefineItem<typeof wallet_sendCalls>
 
 export const wallet_connect = Schema.defineItem({
   method: z.literal('wallet_connect'),

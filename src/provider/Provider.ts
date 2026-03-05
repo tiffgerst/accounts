@@ -1,4 +1,4 @@
-import { Hex, Provider as oxProvider } from 'ox'
+import { Hash, Hex, Provider as oxProvider } from 'ox'
 import type { Chain } from 'viem'
 import { tempo, tempoModerato } from 'viem/chains'
 
@@ -121,6 +121,21 @@ export function create(options: create.Options): create.ReturnType {
             })
           }
 
+          case 'wallet_sendCalls': {
+            const decoded = request._decoded.params?.[0]
+            const { calls = [], capabilities } = decoded ?? {}
+            const sync = capabilities?.sync
+            const txRequest = { calls, _encoded: { method: 'eth_sendTransaction' as const, params: [{}] as const } }
+            const hash = await (async () => {
+              if (!sync) return adapter.actions.sendTransaction(txRequest)
+              const receipt = await adapter.actions.sendTransactionSync(txRequest as never)
+              return (receipt as { transactionHash: `0x${string}` }).transactionHash
+            })()
+            const chainId = Hex.fromNumber(store.getState().chainId)
+            const id = Hex.concat(hash, Hex.padLeft(chainId, 32), sendCallsMagic)
+            return { capabilities: { sync }, id }
+          }
+
           case 'wallet_connect': {
             const capabilities = request._decoded.params?.[0]?.capabilities
             if (capabilities?.method === 'register') {
@@ -146,6 +161,8 @@ export function create(options: create.Options): create.ReturnType {
     { schema: Schema.ox },
   )
 }
+
+const sendCallsMagic = Hash.keccak256(Hex.fromString('TEMPO_5792'))
 
 export declare namespace create {
   type Options = {
