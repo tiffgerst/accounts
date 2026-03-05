@@ -29,10 +29,12 @@ import * as RpcRequest from './zod/request.js'
  * ```
  */
 export function create(options: create.Options): create.ReturnType {
-  const { adapter, chains = [tempo, tempoModerato], storage, storageKey } = options
+  const { adapter, chains = [tempo, tempoModerato], testnet, storage, storageKey } = options
+
+  const defaultChain = testnet ? (chains.find((c) => c.testnet) ?? chains[chains.length - 1]!) : chains[0]!
 
   const store = Store.create({
-    chainId: chains[0]!.id,
+    chainId: defaultChain.id,
     internal_persistPrivate: adapter.internal_persistPrivate,
     storage,
     storageKey,
@@ -202,6 +204,11 @@ export declare namespace create {
     storage?: Storage.Storage | undefined
     /** Storage key for persistence. */
     storageKey?: string | undefined
+    /**
+     * Default to the first testnet chain.
+     * @default false
+     */
+    testnet?: boolean | undefined
   }
   type ReturnType = oxProvider.Provider<{ schema: Schema.Ox }> &
     oxProvider.Emitter & {

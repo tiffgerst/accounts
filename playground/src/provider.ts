@@ -6,6 +6,7 @@ const privateKey = generatePrivateKey()
 const account = Account.fromSecp256k1(privateKey)
 
 export const provider = Provider.create({
+  testnet: true,
   adapter: local({
     loadAccounts: async () => [
       account,
