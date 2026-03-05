@@ -106,16 +106,9 @@ A provider you can `create()`, connect to, read `eth_accounts`/`eth_chainId`, sw
 
 ## Phase 2 — Transaction sending + signing
 
-**Goal:** `eth_sendTransaction` and `wallet_sendCalls` work end-to-end. Sign, broadcast, and verify on-chain. Testable against a local Tempo node.
+**Goal:** `eth_sendTransaction` and `wallet_sendCalls` work end-to-end. Sign, broadcast, and verify on-chain. Testable against a local Tempo node. **Test after each step** — both integration and browser.
 
-### 2.1 `fillTransaction` action
-
-- [ ] Implement `fillTransaction` in `local()` adapter
-  - Uses viem client to fill gas, nonce, chain-specific fields
-  - Returns a prepared unsigned Tempo transaction
-- [ ] Wire `wallet_fillTransaction` in Provider
-
-### 2.2 `sendTransaction` action
+### 2.1 `sendTransaction` action
 
 - [ ] Implement `sendTransaction` in `local()` adapter
   - Looks up active account from store
@@ -124,33 +117,35 @@ A provider you can `create()`, connect to, read `eth_accounts`/`eth_chainId`, sw
   - Uses viem/tempo to serialize + broadcast via `eth_sendRawTransaction`
   - Returns tx hash
 - [ ] Wire `eth_sendTransaction` in Provider (decode params → adapter → encode response)
+- [ ] Test (integration): `eth_sendTransaction` → sends a Tempo tx, returns hash, receipt confirms on-chain
+- [ ] Test (browser): same test case in browser environment
 
-### 2.3 `wallet_sendCalls` action
+### 2.2 `wallet_sendCalls` action
 
 - [ ] Implement `sendCalls` — batches multiple calls into a single Tempo transaction
 - [ ] Wire `wallet_sendCalls` in Provider
+- [ ] Test (integration): `wallet_sendCalls` → batches calls, single tx hash, verify on-chain state
+- [ ] Test (browser): same test case in browser environment
+
+### 2.3 `fillTransaction` action
+
+- [ ] Implement `fillTransaction` in `local()` adapter
+  - Uses viem client to fill gas, nonce, chain-specific fields
+  - Returns a prepared unsigned Tempo transaction
+- [ ] Wire `wallet_fillTransaction` in Provider
+- [ ] Test (integration): `wallet_fillTransaction` → returns prepared tx with gas/nonce filled
+- [ ] Test (browser): same test case in browser environment
 
 ### 2.4 `sendRawTransaction` action
 
 - [ ] Implement `sendRawTransaction` in `local()` adapter — proxies pre-signed tx to node
 - [ ] Wire `eth_sendRawTransaction` in Provider
-
-### 2.5 Tests — integration (against real local node)
-
-- [ ] Test: `eth_sendTransaction` → sends a Tempo tx, returns hash, receipt confirms on-chain
-- [ ] Test: `wallet_sendCalls` → batches calls, single tx hash, verify on-chain state
-- [ ] Test: `wallet_fillTransaction` → returns prepared tx with gas/nonce filled
-- [ ] Test: `eth_sendRawTransaction` → submits pre-signed tx
-- [ ] All tests use `local()` with real secp256k1 key model (`Account.fromSecp256k1`)
-
-### 2.6 Tests — browser
-
-- [ ] Add transaction tests to `Provider.browser.test.ts`
-  - Same tx test cases as 2.5, running in a real browser environment
+- [ ] Test (integration): `eth_sendRawTransaction` → submits pre-signed tx
+- [ ] Test (browser): same test case in browser environment
 
 ### Phase 2 deliverable
 
-Full send-transaction flow working end-to-end. Create account → send transaction → verify on-chain. Both integration and browser tests prove it works.
+Full send-transaction flow working end-to-end. Create account → send transaction → verify on-chain. Both integration and browser tests prove it works at every step.
 
 ---
 

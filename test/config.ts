@@ -4,6 +4,7 @@ import {
   type Client,
   type ClientConfig,
   createClient,
+  defineChain,
   type HttpTransportConfig,
   type Transport,
   type Account as viem_Account,
@@ -52,7 +53,10 @@ export const addresses = {
 
 export const chain = (() => {
   if (nodeEnv === 'testnet') return tempoModerato
-  return tempoLocalnet
+  return defineChain({
+    ...tempoLocalnet,
+    rpcUrls: { default: { http: [rpcUrl] } },
+  })
 })()
 
 export const chainId = (() => {

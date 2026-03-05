@@ -20,6 +20,7 @@
 - **Return directly** — don't declare a variable just to return it. Use `return { ... }` unless the variable is needed (e.g. self-reference for chaining).
 - **Skip braces for single-statement blocks** — omit `{}` for single-statement `if`, `for`, etc.
 - **No section separator comments** — don't use `// ---` or `// ===` divider comments. Let JSDoc and whitespace provide structure.
+- **No dynamic imports** — use static `import` declarations. No `await import(...)` or `import(...)` expressions.
 - **`as never` over `as any`** — when a type assertion is unavoidable, use `as never` instead of `as any`.
 - **Destructure when accessing multiple properties** — prefer `const { a, b } = options` over repeated `options.a`, `options.b`.
 - **`core_` prefix for import aliases** — when aliasing an import to avoid conflicts, use `core_<name>` (e.g. `import { local as core_local }`), not arbitrary camelCase.

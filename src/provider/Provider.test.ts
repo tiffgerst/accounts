@@ -1,9 +1,10 @@
 import { Provider as core_Provider } from 'ox'
+import { waitForTransactionReceipt } from 'viem/actions'
 import { tempoModerato } from 'viem/chains'
 import { describe, expect, test } from 'vitest'
 
 import { local } from '../../test/adapters.js'
-import { accounts as core_accounts, privateKeys } from '../../test/config.js'
+import { accounts as core_accounts, chain, getClient, privateKeys } from '../../test/config.js'
 import * as Provider from './Provider.js'
 
 describe('create', () => {
@@ -224,6 +225,82 @@ describe('events', () => {
       [
         "0xa5bf",
       ]
+    `)
+  })
+})
+
+describe('eth_sendTransaction', () => {
+  test('default: sends transaction and returns hash', async () => {
+    const provider = Provider.create({
+      adapter: local(),
+      chains: [chain],
+    })
+
+    await provider.request({ method: 'eth_requestAccounts' })
+
+    const hash = await provider.request({
+      method: 'eth_sendTransaction',
+      params: [{ calls: [{ to: core_accounts[1].address }] }],
+    })
+
+    expect(hash).toMatch(/^0x[0-9a-f]{64}$/)
+  })
+
+  test('behavior: transaction is confirmed on-chain', async () => {
+    const provider = Provider.create({
+      adapter: local(),
+      chains: [chain],
+    })
+
+    await provider.request({ method: 'eth_requestAccounts' })
+
+    const hash = await provider.request({
+      method: 'eth_sendTransaction',
+      params: [{ calls: [{ to: core_accounts[1].address }] }],
+    })
+
+    const receipt = await waitForTransactionReceipt(getClient(), { hash })
+
+    const { blockHash, blockNumber, cumulativeGasUsed, effectiveGasPrice, gasUsed, logs, logsBloom, transactionHash, transactionIndex, ...rest } = receipt
+    expect(rest).toMatchInlineSnapshot(`
+      {
+        "contractAddress": null,
+        "feePayer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "feeToken": "0x20c0000000000000000000000000000000000001",
+        "from": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "status": "success",
+        "to": "0x8c8d35429f74ec245f8ef2f4fd1e551cff97d650",
+        "type": "0x76",
+      }
+    `)
+  })
+})
+
+describe('eth_sendTransactionSync', () => {
+  test('default: sends transaction and returns receipt', async () => {
+    const provider = Provider.create({
+      adapter: local(),
+      chains: [chain],
+    })
+
+    await provider.request({ method: 'eth_requestAccounts' })
+
+    const receipt = await provider.request({
+      method: 'eth_sendTransactionSync',
+      params: [{ calls: [{ to: core_accounts[1].address }] }],
+    })
+
+    const { blockHash, blockNumber, cumulativeGasUsed, effectiveGasPrice, gasUsed, logs, logsBloom, transactionHash, transactionIndex, ...rest } = receipt
+    expect(rest).toMatchInlineSnapshot(`
+      {
+        "contractAddress": null,
+        "feePayer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "feeToken": "0x20c0000000000000000000000000000000000001",
+        "from": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "status": "success",
+        "to": "0x8c8d35429f74ec245f8ef2f4fd1e551cff97d650",
+        "type": "0x76",
+      }
     `)
   })
 })
