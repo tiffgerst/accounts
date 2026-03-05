@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   resolve: {
     alias: {
-      'zyzz': join(import.meta.dirname, './src'),
+      zyzz: join(import.meta.dirname, './src'),
     },
   },
   test: {

@@ -6,7 +6,8 @@ import { fetchOptions } from './config.js'
 
 export async function setupServer({ port }: { port: number }) {
   const tag = await (async () => {
-    if (!import.meta.env.VITE_NODE_TAG?.startsWith('http')) return import.meta.env.VITE_NODE_TAG ?? 'latest'
+    if (!import.meta.env.VITE_NODE_TAG?.startsWith('http'))
+      return import.meta.env.VITE_NODE_TAG ?? 'latest'
 
     const client = createClient({
       transport: http(import.meta.env.VITE_NODE_TAG, {

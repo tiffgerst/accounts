@@ -2,7 +2,6 @@ import { Elysia } from 'elysia'
 import express from 'express'
 import { Hono } from 'hono'
 import type { RpcRequest } from 'ox'
-
 import { sendTransactionSync } from 'viem/actions'
 import { withFeePayer } from 'viem/tempo'
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
