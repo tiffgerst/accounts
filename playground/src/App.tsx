@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore, useState } from 'react'
-import { Hex } from 'ox'
+import { Hex, Json } from 'ox'
 import { account, provider } from './provider.js'
 
 export function App() {
@@ -7,6 +7,7 @@ export function App() {
     <div>
       <h1>zyzz playground</h1>
       <p>{account.address}</p>
+      <Faucet />
 
       <h2>State</h2>
       <ProviderState />
@@ -37,6 +38,28 @@ export function App() {
   )
 }
 
+// -- Faucet --
+
+function Faucet() {
+  const [result, error, execute] = useRequest()
+  return (
+    <Method method="tempo_fundAddress" result={result} error={error}>
+      <button
+        onClick={() =>
+          execute(() =>
+            provider.request({
+              method: 'tempo_fundAddress',
+              params: [account.address],
+            } as any),
+          )
+        }
+      >
+        Fund Account
+      </button>
+    </Method>
+  )
+}
+
 // -- State --
 
 function ProviderState() {
@@ -46,7 +69,7 @@ function ProviderState() {
   )
   return (
     <pre>
-      {JSON.stringify(
+      {Json.stringify(
         {
           status: state.status,
           chainId: state.chainId,
@@ -334,7 +357,7 @@ function Events() {
           <tr key={i}>
             <td>{e.time}</td>
             <td>{e.name}</td>
-            <td><pre style={{ margin: 0, whiteSpace: 'nowrap' }}>{JSON.stringify(e.data)}</pre></td>
+            <td><pre style={{ margin: 0, whiteSpace: 'nowrap' }}>{Json.stringify(e.data)}</pre></td>
           </tr>
         ))}
       </tbody>
@@ -381,7 +404,7 @@ function Method({
         <pre style={{ color: 'red' }}>{`${error.name}: ${error.message}`}</pre>
       )}
       {result !== undefined && (
-        <pre>{JSON.stringify(result, null, 2)}</pre>
+        <pre>{Json.stringify(result, null, 2)}</pre>
       )}
     </div>
   )
