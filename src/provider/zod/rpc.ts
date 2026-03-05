@@ -4,13 +4,15 @@ import * as Schema from '../Schema.js'
 import * as u from './utils.js'
 
 const capabilities = {
-  connect: z.optional(
-    z.object({
-      method: z.optional(z.union([z.literal('register'), z.literal('login')])),
-    }),
-  ),
+  connect: {
+    request: z.optional(
+      z.object({
+        method: z.optional(z.union([z.literal('register'), z.literal('login')])),
+      }),
+    ),
+    result: z.record(z.string(), z.unknown()),
+  },
 }
-export type Capabilities = z.output<typeof capabilities>
 
 const log = z.object({
   address: u.address(),
@@ -175,12 +177,22 @@ export const wallet_connect = Schema.defineItem({
     z.readonly(
       z.tuple([
         z.object({
-          capabilities: capabilities.connect,
+          capabilities: capabilities.connect.request,
+          version: z.optional(z.string()),
         }),
       ]),
     ),
   ),
-  returns: z.readonly(z.array(u.address())),
+  returns: z.object({
+    accounts: z.readonly(
+      z.array(
+        z.object({
+          address: u.address(),
+          capabilities: capabilities.connect.result,
+        }),
+      ),
+    ),
+  }),
 })
 export type wallet_connect = Schema.DefineItem<typeof wallet_connect>
 

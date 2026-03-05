@@ -49,11 +49,11 @@ export function create(options: create.Options): create.ReturnType {
 
   // Emit EIP-1193 events on state changes.
   store.subscribe(
-    (state) => state.accounts,
-    (accounts) =>
+    (state) => state.accounts.map((a) => a.address).join(),
+    () =>
       emitter.emit(
         'accountsChanged',
-        accounts.map((a) => a.address),
+        store.getState().accounts.map((a) => a.address),
       ),
   )
   store.subscribe(
@@ -69,7 +69,7 @@ export function create(options: create.Options): create.ReturnType {
     },
   )
 
-  return oxProvider.from(
+  return Object.assign(oxProvider.from(
     {
       ...(emitter as unknown as oxProvider.Emitter),
       async request({ method, params }: { method: string; params?: any }) {
@@ -138,12 +138,13 @@ export function create(options: create.Options): create.ReturnType {
 
           case 'wallet_connect': {
             const capabilities = request._decoded.params?.[0]?.capabilities
-            if (capabilities?.method === 'register') {
-              const accounts = await adapter.actions.createAccount()
-              return accounts.map((a) => a.address)
+            const accounts =
+              capabilities?.method === 'register'
+                ? await adapter.actions.createAccount()
+                : await adapter.actions.loadAccounts()
+            return {
+              accounts: accounts.map((a) => ({ address: a.address, capabilities: {} })),
             }
-            const accounts = await adapter.actions.loadAccounts()
-            return accounts.map((a) => a.address)
           }
 
           case 'wallet_disconnect':
@@ -159,7 +160,7 @@ export function create(options: create.Options): create.ReturnType {
       },
     },
     { schema: Schema.ox },
-  )
+  ), { chains })
 }
 
 const sendCallsMagic = Hash.keccak256(Hex.fromString('TEMPO_5792'))
@@ -178,5 +179,9 @@ export declare namespace create {
     /** Storage key for persistence. */
     storageKey?: string | undefined
   }
-  type ReturnType = oxProvider.Provider<{ schema: Schema.Ox }> & oxProvider.Emitter
+  type ReturnType = oxProvider.Provider<{ schema: Schema.Ox }> &
+    oxProvider.Emitter & {
+      /** Configured chains. */
+      chains: readonly [Chain, ...Chain[]]
+    }
 }

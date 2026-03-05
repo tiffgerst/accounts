@@ -57,10 +57,13 @@ describe('DefineItem', () => {
         | readonly [
             {
               capabilities?: { method?: 'register' | 'login' | undefined } | undefined
+              version?: string | undefined
             },
           ]
         | undefined
-      returns: readonly `0x${string}`[]
+      returns: {
+        accounts: readonly { address: `0x${string}`; capabilities: Record<string, unknown> }[]
+      }
     }>()
   })
 

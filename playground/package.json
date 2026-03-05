@@ -1,0 +1,24 @@
+{
+  "name": "playground",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "catalog:default",
+    "react-dom": "catalog:default",
+    "viem": "catalog:default",
+    "zyzz": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:default",
+    "@types/react-dom": "catalog:default",
+    "@vitejs/plugin-react": "catalog:default",
+    "typescript": "catalog:default",
+    "vite": "^7.3.1"
+  }
+}

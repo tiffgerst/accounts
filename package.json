@@ -1,6 +1,7 @@
 {
 	"scripts": {
 		"build": "zile",
+		"playground": "pnpm --filter playground dev",
 		"changeset:publish": "zile publish:prepare && changeset publish && zile publish:post",
 		"changeset:version": "changeset version && pnpm check",
 		"check": "oxlint --fix --ignore-pattern package.json && oxfmt",
@@ -95,6 +96,11 @@
 			"src": "./src/index.ts",
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
+		},
+		"./provider": {
+			"src": "./src/provider/index.ts",
+			"types": "./dist/provider/index.d.ts",
+			"default": "./dist/provider/index.js"
 		},
 		"./server": {
 			"src": "./src/server/index.ts",

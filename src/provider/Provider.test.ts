@@ -80,11 +80,16 @@ describe('wallet_connect', () => {
       adapter: local(),
     })
 
-    const accounts = await provider.request({ method: 'wallet_connect' })
-    expect(accounts).toMatchInlineSnapshot(`
-      [
-        "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-      ]
+    const result = await provider.request({ method: 'wallet_connect' })
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "accounts": [
+          {
+            "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            "capabilities": {},
+          },
+        ],
+      }
     `)
   })
 
@@ -100,14 +105,19 @@ describe('wallet_connect', () => {
       }),
     })
 
-    const accounts = await provider.request({
+    const result = await provider.request({
       method: 'wallet_connect',
       params: [{ capabilities: { method: 'register' } }],
     })
-    expect(accounts).toMatchInlineSnapshot(`
-      [
-        "0x8C8d35429F74ec245F8Ef2f4Fd1e551cFF97d650",
-      ]
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "accounts": [
+          {
+            "address": "0x8C8d35429F74ec245F8Ef2f4Fd1e551cFF97d650",
+            "capabilities": {},
+          },
+        ],
+      }
     `)
   })
 })
