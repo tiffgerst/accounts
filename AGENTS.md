@@ -53,7 +53,8 @@
 
 ## Testing Conventions
 
-- **Inline snapshots over direct assertions** — prefer `toMatchInlineSnapshot()` over `.toBe()`, `.toEqual()`, etc. for return values. Use `toThrowErrorMatchingInlineSnapshot()` for error assertions. If a value has non-deterministic properties (e.g. `duration`, timestamps), extract and assert those separately, then snapshot the rest.
+- **Inline snapshots over direct assertions** — prefer `toMatchInlineSnapshot()` over `.toBe()`, `.toEqual()`, etc. for return values. Use `toThrowErrorMatchingInlineSnapshot()` for error assertions.
+- **Snapshot whole objects, omit nondeterministic properties** — destructure out nondeterministic fields (e.g. `blockHash`, `gasUsed`, timestamps) and snapshot the rest, rather than cherry-picking individual fields to assert.
 - **Unit and type tests as you go** — write unit tests and `.test-d.ts` type tests alongside implementation for each module. Save high-level integration tests (with and without browser) for the end.
 
 ## Git Conventions

@@ -42,3 +42,14 @@ export type WithDecoded<schema extends z.ZodMiniType> =
       ? Extract<z.input<schema>, { method: m }> & { _decoded: decoded }
       : never
     : never
+
+/**
+ * Encodes a decoded (output) value back to its wire (input) format
+ * by running codec `reverseTransform` functions.
+ */
+export function encode<const schema extends z.ZodMiniType>(
+  schema: schema,
+  value: z.output<schema>,
+): z.input<schema> {
+  return (z as never as { encode: typeof encode }).encode(schema, value)
+}
