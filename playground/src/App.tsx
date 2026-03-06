@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useSyncExternalStore, useState } from 'react'
 import { Hex, Json } from 'ox'
+import { useCallback, useEffect, useSyncExternalStore, useState } from 'react'
+
 import { account, provider } from './provider.js'
 
 export function App() {
@@ -36,7 +37,6 @@ export function App() {
       <h2>RPC Proxy (fallthrough)</h2>
       <EthBlockNumber />
       <EthGetBalance />
-
     </div>
   )
 }
@@ -92,9 +92,7 @@ function WalletConnect() {
   const [result, error, execute] = useRequest()
   return (
     <Method method="wallet_connect" result={result} error={error}>
-      <button
-        onClick={() => execute(() => provider.request({ method: 'wallet_connect' }))}
-      >
+      <button onClick={() => execute(() => provider.request({ method: 'wallet_connect' }))}>
         Login
       </button>
       <button
@@ -117,9 +115,7 @@ function EthRequestAccounts() {
   const [result, error, execute] = useRequest()
   return (
     <Method method="eth_requestAccounts" result={result} error={error}>
-      <button
-        onClick={() => execute(() => provider.request({ method: 'eth_requestAccounts' }))}
-      >
+      <button onClick={() => execute(() => provider.request({ method: 'eth_requestAccounts' }))}>
         Request Accounts
       </button>
     </Method>
@@ -150,9 +146,7 @@ function EthAccounts() {
   const [result, error, execute] = useRequest()
   return (
     <Method method="eth_accounts" result={result} error={error}>
-      <button
-        onClick={() => execute(() => provider.request({ method: 'eth_accounts' }))}
-      >
+      <button onClick={() => execute(() => provider.request({ method: 'eth_accounts' }))}>
         Get Accounts
       </button>
     </Method>
@@ -163,9 +157,7 @@ function EthChainId() {
   const [result, error, execute] = useRequest()
   return (
     <Method method="eth_chainId" result={result} error={error}>
-      <button
-        onClick={() => execute(() => provider.request({ method: 'eth_chainId' }))}
-      >
+      <button onClick={() => execute(() => provider.request({ method: 'eth_chainId' }))}>
         Get Chain ID
       </button>
     </Method>
@@ -324,7 +316,9 @@ function WalletGetBalances() {
           <tbody>
             {balances.map((t) => (
               <tr key={t.address}>
-                <td style={{ paddingRight: 16 }}>{t.name} ({t.symbol})</td>
+                <td style={{ paddingRight: 16 }}>
+                  {t.name} ({t.symbol})
+                </td>
                 <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                   {t.display}
                 </td>
@@ -343,9 +337,7 @@ function EthBlockNumber() {
   const [result, error, execute] = useRequest()
   return (
     <Method method="eth_blockNumber" result={result} error={error}>
-      <button
-        onClick={() => execute(() => provider.request({ method: 'eth_blockNumber' }))}
-      >
+      <button onClick={() => execute(() => provider.request({ method: 'eth_blockNumber' }))}>
         Get Block Number
       </button>
     </Method>
@@ -403,29 +395,31 @@ function Events() {
   return (
     <div>
       <button onClick={() => setEvents([])}>Clear</button>
-    <table style={{ tableLayout: 'fixed', width: '100%' }}>
-      <colgroup>
-        <col style={{ width: 100 }} />
-        <col style={{ width: 150 }} />
-        <col />
-      </colgroup>
-      <thead>
-        <tr>
-          <th style={{ textAlign: 'left' }}>Timestamp</th>
-          <th style={{ textAlign: 'left' }}>Event</th>
-          <th style={{ textAlign: 'left' }}>Value</th>
-        </tr>
-      </thead>
-      <tbody>
-        {events.map((e, i) => (
-          <tr key={i}>
-            <td>{e.time}</td>
-            <td>{e.name}</td>
-            <td><pre style={{ margin: 0, whiteSpace: 'nowrap' }}>{Json.stringify(e.data)}</pre></td>
+      <table style={{ tableLayout: 'fixed', width: '100%' }}>
+        <colgroup>
+          <col style={{ width: 100 }} />
+          <col style={{ width: 150 }} />
+          <col />
+        </colgroup>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left' }}>Timestamp</th>
+            <th style={{ textAlign: 'left' }}>Event</th>
+            <th style={{ textAlign: 'left' }}>Value</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {events.map((e, i) => (
+            <tr key={i}>
+              <td>{e.time}</td>
+              <td>{e.name}</td>
+              <td>
+                <pre style={{ margin: 0, whiteSpace: 'nowrap' }}>{Json.stringify(e.data)}</pre>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -464,12 +458,8 @@ function Method({
     <div>
       <h3>{method}</h3>
       {children}
-      {error && (
-        <pre style={{ color: 'red' }}>{`${error.name}: ${error.message}`}</pre>
-      )}
-      {result !== undefined && (
-        <pre>{Json.stringify(result, null, 2)}</pre>
-      )}
+      {error && <pre style={{ color: 'red' }}>{`${error.name}: ${error.message}`}</pre>}
+      {result !== undefined && <pre>{Json.stringify(result, null, 2)}</pre>}
     </div>
   )
 }

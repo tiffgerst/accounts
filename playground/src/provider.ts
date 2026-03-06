@@ -8,9 +8,7 @@ const account = Account.fromSecp256k1(privateKey)
 export const provider = Provider.create({
   testnet: true,
   adapter: local({
-    loadAccounts: async () => [
-      account,
-    ],
+    loadAccounts: async () => [account],
     createAccount: async () => {
       const key = generatePrivateKey()
       const account = Account.fromSecp256k1(key)
