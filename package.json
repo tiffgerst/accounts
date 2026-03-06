@@ -66,6 +66,7 @@
 	"dependencies": {
 		"@remix-run/fetch-router": "~0.17.0",
 		"idb-keyval": "^6.2.2",
+		"mipd": "^0.0.7",
 		"ox": "~0.14.0",
 		"webauthx": "https://pkg.pr.new/wevm/webauthx@a8d08a7",
 		"zod": "^4.3.6",
