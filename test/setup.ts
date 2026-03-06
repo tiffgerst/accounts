@@ -31,7 +31,7 @@ beforeAll(async () => {
       token: Addresses.pathUsd,
       amount: parseUnits('100', 6),
     })
-    
+
     return
   }
 

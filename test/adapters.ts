@@ -1,4 +1,9 @@
+import type { Address } from 'viem'
+import { Account } from 'viem/tempo'
+import { Registration } from 'webauthx/client'
+
 import { local as core_local } from '../src/provider/adapters/local.js'
+import * as Ceremony from '../src/provider/Ceremony.js'
 import type * as Store from '../src/provider/Store.js'
 import { privateKeys, webAuthnAccounts } from './config.js'
 
@@ -13,21 +18,60 @@ function toStoreAccount(index: number): Store.Account {
   }
 }
 
-/** Creates a local adapter pre-configured with test accounts. */
-export function local(options: local.Options = {}) {
-  const {
-    loadAccounts = async () => [toStoreAccount(0)],
-    createAccount,
-  } = options
+/** Creates a local adapter pre-configured with deterministic headless WebAuthn test accounts. */
+export function headlessWebAuthn(options: headlessWebAuthn.Options = {}) {
+  const { loadAccounts = async () => [toStoreAccount(0)], createAccount } = options
   return core_local({
     loadAccounts,
     createAccount,
   })
 }
 
-export declare namespace local {
+export declare namespace headlessWebAuthn {
   type Options = {
     createAccount?: (() => Promise<readonly Store.Account[]>) | undefined
     loadAccounts?: (() => Promise<readonly Store.Account[]>) | undefined
+  }
+}
+
+/** Creates a local adapter backed by real CDP passkeys. */
+export function webAuthn(options: webAuthn.Options = {}) {
+  let loadedAccount: (Store.Account & { address: Address }) | undefined
+
+  const ceremony = Ceremony.local({
+    origin: 'http://localhost',
+    rpId: 'localhost',
+  })
+
+  /** Performs a real WebAuthn registration ceremony and returns a store account. */
+  async function registerAccount(name: string): Promise<Store.Account & { address: Address }> {
+    const { options } = await ceremony.getRegistrationOptions({ name })
+    const credential = await Registration.create({ options })
+    const { publicKey } = await ceremony.verifyRegistration(credential)
+    const account = Account.fromWebAuthnP256({ id: credential.id, publicKey })
+    return {
+      address: account.address,
+      keyType: 'webAuthn' as const,
+      credential: { id: credential.id, publicKey },
+    }
+  }
+
+  return core_local({
+    async loadAccounts() {
+      if (!loadedAccount) loadedAccount = await registerAccount('default')
+      return [loadedAccount]
+    },
+    createAccount: options.withCreate
+      ? async () => {
+          const account = await registerAccount('created')
+          return [account]
+        }
+      : undefined,
+  })
+}
+
+export declare namespace webAuthn {
+  type Options = {
+    withCreate?: boolean | undefined
   }
 }

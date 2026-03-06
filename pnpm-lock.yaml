@@ -42,6 +42,9 @@ importers:
       ox:
         specifier: ~0.14.0
         version: 0.14.0(typescript@5.9.3)(zod@4.3.6)
+      webauthx:
+        specifier: https://pkg.pr.new/wevm/webauthx@a8d08a7
+        version: https://pkg.pr.new/wevm/webauthx@a8d08a7(typescript@5.9.3)(zod@4.3.6)
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -96,7 +99,7 @@ importers:
         version: 4.12.4
       node:
         specifier: runtime:^24.5.1
-        version: runtime:24.11.1
+        version: runtime:24.14.0
       oxfmt:
         specifier: ^0.35.0
         version: 0.35.0
@@ -2249,94 +2252,94 @@ packages:
   node-releases@2.0.25:
     resolution: {integrity: sha512-4auku8B/vw5psvTiiN9j1dAOsXvMoGqJuKJcR+dTdqiXEK20mMTk1UEo3HS16LeGQsVG6+qKTPM9u/qQ2LqATA==}
 
-  node@runtime:24.11.1:
+  node@runtime:24.14.0:
     resolution:
       type: variations
       variants:
         - resolution:
             archive: tarball
             bin: bin/node
-            integrity: sha256-mLqRmgOQ2MQi1LsxBexbd3I89UFDtMHkudd2kPoHUgY=
+            integrity: sha256-J6xI+Ux+iPSwxdkHfw/sECViicfcoh4Nn4LLqtE9bj0=
             type: binary
-            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-aix-ppc64.tar.gz
+            url: https://nodejs.org/download/release/v24.14.0/node-v24.14.0-aix-ppc64.tar.gz
           targets:
             - cpu: ppc64
               os: aix
         - resolution:
             archive: tarball
             bin: bin/node
-            integrity: sha256-sFqjpm7+aAAj+TC9WvP9u9VCeU2lZEyirXEdaMvU3DU=
+            integrity: sha256-oaVPRqdQ0lI9Yo2SSqthdYpRydrT4COL6xQUG+lhXdM=
             type: binary
-            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-darwin-arm64.tar.gz
+            url: https://nodejs.org/download/release/v24.14.0/node-v24.14.0-darwin-arm64.tar.gz
           targets:
             - cpu: arm64
               os: darwin
         - resolution:
             archive: tarball
             bin: bin/node
-            integrity: sha256-CWCBttb83T9boPXx1EpH6DA3rS546tomZxwlL+ZN0RE=
+            integrity: sha256-8oeeuBDiWZOgV45dh4kwJm/S6vz/6fKDmz2Ns1TUh54=
             type: binary
-            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-darwin-x64.tar.gz
+            url: https://nodejs.org/download/release/v24.14.0/node-v24.14.0-darwin-x64.tar.gz
           targets:
             - cpu: x64
               os: darwin
         - resolution:
             archive: tarball
             bin: bin/node
-            integrity: sha256-Dck+xceYsNNH8GjbbSBdA96ppxdl5qU5IraCuRJl1x8=
+            integrity: sha256-9EdAzSGN6BJ/HETEFRCjp0D6XJyNHNzhw77a2nnzzec=
             type: binary
-            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-linux-arm64.tar.gz
+            url: https://nodejs.org/download/release/v24.14.0/node-v24.14.0-linux-arm64.tar.gz
           targets:
             - cpu: arm64
               os: linux
         - resolution:
             archive: tarball
             bin: bin/node
-            integrity: sha256-zUFAfzNS3i8GbqJsXF0OqbY2I3TWthg4Wp8una0iBhY=
+            integrity: sha256-g7Jj+cLqlGwMShXDyupkcNxJ/gvrbzPf0pqpEoJQY3o=
             type: binary
-            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-linux-ppc64le.tar.gz
+            url: https://nodejs.org/download/release/v24.14.0/node-v24.14.0-linux-ppc64le.tar.gz
           targets:
             - cpu: ppc64le
               os: linux
         - resolution:
             archive: tarball
             bin: bin/node
-            integrity: sha256-XUyLyl+PJZP5CB3uOYNHYOhaFvphyVDz6G7IWZbwBVA=
+            integrity: sha256-j6Igofe3dpYFwukp/b9zaCKZe/TPiKPbBRiOq9dxIyg=
             type: binary
-            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-linux-s390x.tar.gz
+            url: https://nodejs.org/download/release/v24.14.0/node-v24.14.0-linux-s390x.tar.gz
           targets:
             - cpu: s390x
               os: linux
         - resolution:
             archive: tarball
             bin: bin/node
-            integrity: sha256-WKX/XMjyIA5Fi+oi4ynVwZlKobER1JnKRuwkEdWCOco=
+            integrity: sha256-2/W4Zl3sFeWeY1mlF/77R7I/25FS2N75dbm8o9/G01U=
             type: binary
-            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-linux-x64.tar.gz
+            url: https://nodejs.org/download/release/v24.14.0/node-v24.14.0-linux-x64.tar.gz
           targets:
             - cpu: x64
               os: linux
         - resolution:
             archive: zip
             bin: node.exe
-            integrity: sha256-zp7k5Ufr3/NVvrSOMJsWbCTfa+ApHJ6vEDzhXz3p5bQ=
-            prefix: node-v24.11.1-win-arm64
+            integrity: sha256-iNNugQlzai+pvcWW8s9QejxSxpzfluVPis1HPsFL6FM=
+            prefix: node-v24.14.0-win-arm64
             type: binary
-            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-win-arm64.zip
+            url: https://nodejs.org/download/release/v24.14.0/node-v24.14.0-win-arm64.zip
           targets:
             - cpu: arm64
               os: win32
         - resolution:
             archive: zip
             bin: node.exe
-            integrity: sha256-U1WubXxJ7dz959NKw0hoIGAKgxv4HcO9ylyNtqm7DnY=
-            prefix: node-v24.11.1-win-x64
+            integrity: sha256-MT+kDA17GFdYId6MsXSDAx/gfZXeWZT29DXzs0X4XGY=
+            prefix: node-v24.14.0-win-x64
             type: binary
-            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-win-x64.zip
+            url: https://nodejs.org/download/release/v24.14.0/node-v24.14.0-win-x64.zip
           targets:
             - cpu: x64
               os: win32
-    version: 24.11.1
+    version: 24.14.0
     hasBin: true
 
   normalize-path@3.0.0:
@@ -3025,6 +3028,10 @@ packages:
         optional: true
       jsdom:
         optional: true
+
+  webauthx@https://pkg.pr.new/wevm/webauthx@a8d08a7:
+    resolution: {tarball: https://pkg.pr.new/wevm/webauthx@a8d08a7}
+    version: 0.1.0
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -5086,7 +5093,7 @@ snapshots:
 
   node-releases@2.0.25: {}
 
-  node@runtime:24.11.1: {}
+  node@runtime:24.14.0: {}
 
   normalize-path@3.0.0: {}
 
@@ -5821,6 +5828,13 @@ snapshots:
       - terser
       - tsx
       - yaml
+
+  webauthx@https://pkg.pr.new/wevm/webauthx@a8d08a7(typescript@5.9.3)(zod@4.3.6):
+    dependencies:
+      ox: 0.14.0(typescript@5.9.3)(zod@4.3.6)
+    transitivePeerDependencies:
+      - typescript
+      - zod
 
   webidl-conversions@3.0.1: {}
 

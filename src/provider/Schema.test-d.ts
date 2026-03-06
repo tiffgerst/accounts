@@ -34,15 +34,21 @@ describe('DefineItem', () => {
       method: 'eth_sendTransaction'
       params: readonly [
         {
+          accessList?: { address: `0x${string}`; storageKeys: `0x${string}`[] }[] | undefined
           calls?:
-            | readonly { data?: `0x${string}`; to?: `0x${string}`; value?: bigint }[]
+            | readonly { data?: `0x${string}` | undefined; to?: `0x${string}` | undefined }[]
             | undefined
-          data?: `0x${string}` | undefined
+          chainId?: number | undefined
+          feePayer?: boolean | string | undefined
+          feeToken?: `0x${string}` | undefined
+          from?: `0x${string}` | undefined
           gas?: bigint | undefined
           maxFeePerGas?: bigint | undefined
           maxPriorityFeePerGas?: bigint | undefined
           nonce?: number | undefined
-          to?: `0x${string}` | undefined
+          nonceKey?: bigint | undefined
+          validAfter?: number | undefined
+          validBefore?: number | undefined
           value?: bigint | undefined
         },
       ]
@@ -113,7 +119,7 @@ describe('Ox', () => {
 describe('Viem', () => {
   test('is a tuple of all provider methods', () => {
     expectTypeOf<Schema.Viem[0]['Method']>().toEqualTypeOf<'eth_accounts'>()
-    expectTypeOf<Schema.Viem[6]['Method']>().toEqualTypeOf<'wallet_switchEthereumChain'>()
+    expectTypeOf<Schema.Viem[12]['Method']>().toEqualTypeOf<'wallet_switchEthereumChain'>()
   })
 })
 
@@ -125,6 +131,12 @@ describe('Request', () => {
       | 'eth_chainId'
       | 'eth_requestAccounts'
       | 'eth_sendTransaction'
+      | 'eth_signTransaction'
+      | 'eth_sendTransactionSync'
+      | 'eth_signTypedData_v4'
+      | 'personal_sign'
+      | 'wallet_sendCalls'
+      | 'wallet_getBalances'
       | 'wallet_connect'
       | 'wallet_disconnect'
       | 'wallet_switchEthereumChain'

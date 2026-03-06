@@ -169,29 +169,6 @@ Full send-transaction flow working end-to-end. Create account → send transacti
 - [ ] Implement `getCallsStatus` → returns call bundle status
 - [ ] Wire `wallet_getCapabilities` and `wallet_getCallsStatus` in Provider
 
-### 3.4 `eth_getBalance` interception
-
-- [ ] Intercept `eth_getBalance` — support optional `token` param for TIP-20 balance queries via `Actions.token.getBalance`
-- [ ] Without token param → return `0n` (Tempo has no native token)
-
-### 3.5 Error codes
-
-- [ ] Ensure all error paths use standard EIP-1193 codes (`4001`, `4100`, `4200`, `4900`, `4901`)
-- [ ] Test error scenarios: unauthorized, user rejected, unsupported method, disconnected
-
-### 3.6 Tests — integration
-
-- [ ] Test: `personal_sign` → returns valid signature, recoverable to signer address
-- [ ] Test: `eth_signTypedData_v4` → returns valid EIP-712 signature
-- [ ] Test: `wallet_getCapabilities` → returns expected shape
-- [ ] Test: `eth_getBalance` with token → returns TIP-20 balance
-- [ ] Test: error codes for each category
-
-### 3.7 Tests — browser
-
-- [ ] Add signing + capabilities tests to `Provider.browser.test.ts`
-  - Same test cases as 3.6, running in a real browser environment
-
 ### Phase 3 deliverable
 
 Full signing + capabilities. The provider is now a complete local wallet for non-WebAuthn key models. Both integration and browser tests prove it works.

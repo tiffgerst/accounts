@@ -35,10 +35,21 @@ export function local(options: local.Options): Adapter {
           throw new ox_Provider.UnsupportedMethodError({
             message: '`createAccount` not configured on adapter.',
           })
-        return await createAccount()
+        const accounts = await createAccount()
+        params.store.setState((state) => ({
+          accounts: [...state.accounts, ...accounts],
+          activeAccount: state.accounts.length,
+          status: 'connected',
+        }))
+        return accounts
+      },
+      async disconnect() {
+        params.store.setState({ accounts: [], activeAccount: 0, status: 'disconnected' })
       },
       async loadAccounts() {
-        return await loadAccounts()
+        const accounts = await loadAccounts()
+        params.store.setState({ accounts: [...accounts], activeAccount: 0, status: 'connected' })
+        return accounts
       },
       async signPersonalMessage({ data, address }) {
         const account = params.getAccount(address, { signable: true })
@@ -85,6 +96,9 @@ export function local(options: local.Options): Adapter {
           ...rest,
           type: 'tempo',
         })
+      },
+      async switchChain({ chainId }) {
+        params.store.setState({ chainId })
       },
     },
   }

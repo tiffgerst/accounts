@@ -1,15 +1,17 @@
 import { Hex } from 'ox'
+import { type Address, parseUnits } from 'viem'
 import { verifyMessage, verifyTypedData } from 'viem/actions'
+import { Actions, Addresses } from 'viem/tempo'
 import { describe, expect, test } from 'vitest'
 
-import { local } from '../../test/adapters.js'
-import { chain, getClient, webAuthnAccounts } from '../../test/config.js'
+import { webAuthn } from '../../test/adapters.js'
+import { accounts, chain, getClient } from '../../test/config.js'
 import * as Provider from './Provider.js'
 
 describe('create', () => {
   test('default: returns an EIP-1193 provider', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
     })
     expect(provider).toBeDefined()
     expect(typeof provider.request).toMatchInlineSnapshot(`"function"`)
@@ -19,7 +21,7 @@ describe('create', () => {
 describe('eth_chainId', () => {
   test('default: returns configured chain ID as hex', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
     })
 
     const chainId = await provider.request({ method: 'eth_chainId' })
@@ -30,43 +32,30 @@ describe('eth_chainId', () => {
 describe('eth_requestAccounts', () => {
   test('default: loads accounts via adapter', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
     })
 
-    const accounts = await provider.request({ method: 'eth_requestAccounts' })
-    expect(accounts).toMatchInlineSnapshot(`
-      [
-        "0x1ecBa262e4510F333FB5051743e2a53a765deBD0",
-      ]
-    `)
+    const accts = await provider.request({ method: 'eth_requestAccounts' })
+    expect(accts).toHaveLength(1)
+    expect(accts[0]).toMatch(/^0x[0-9a-fA-F]{40}$/)
   })
 })
 
 describe('wallet_connect', () => {
   test('default: returns ERC-7846 response', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
     })
 
     const result = await provider.request({ method: 'wallet_connect' })
-    expect(result).toMatchInlineSnapshot(`
-      {
-        "accounts": [
-          {
-            "address": "0x1ecBa262e4510F333FB5051743e2a53a765deBD0",
-            "capabilities": {},
-          },
-        ],
-      }
-    `)
+    expect(result.accounts).toHaveLength(1)
+    expect(result.accounts[0]!.address).toMatch(/^0x[0-9a-fA-F]{40}$/)
+    expect(result.accounts[0]!.capabilities).toMatchInlineSnapshot(`{}`)
   })
 
   test('behavior: register preserves existing accounts', async () => {
     const provider = Provider.create({
-      adapter: local({
-        loadAccounts: async () => [webAuthnAccounts[0]],
-        createAccount: async () => [webAuthnAccounts[1]],
-      }),
+      adapter: webAuthn({ withCreate: true }),
     })
 
     await provider.request({ method: 'wallet_connect' })
@@ -76,16 +65,13 @@ describe('wallet_connect', () => {
     })
 
     expect(result.accounts.length).toMatchInlineSnapshot(`2`)
-    // New account is active (first)
-    expect(result.accounts[0]!.address).toMatchInlineSnapshot(`"0xB08a557649C30B96c28825748da6a940D6c8972e"`)
+    // New account is active (first) and differs from the loaded one
+    expect(result.accounts[0]!.address).not.toBe(result.accounts[1]!.address)
   })
 
   test('behavior: login deduplicates and sets active account', async () => {
     const provider = Provider.create({
-      adapter: local({
-        loadAccounts: async () => [webAuthnAccounts[0]],
-        createAccount: async () => [webAuthnAccounts[1]],
-      }),
+      adapter: webAuthn({ withCreate: true }),
     })
 
     // Register then login with same loadAccounts
@@ -97,16 +83,18 @@ describe('wallet_connect', () => {
 
     // No duplicates
     expect(provider.store.getState().accounts.length).toMatchInlineSnapshot(`2`)
-    // Active is the loaded account
+    // Active is the loaded account (returned first by eth_accounts)
+    const { activeAccount } = provider.store.getState()
+    const loadedAddress = provider.store.getState().accounts[activeAccount]!.address
     const result = await provider.request({ method: 'eth_accounts' })
-    expect(result[0]).toMatchInlineSnapshot(`"0x1ecBa262e4510F333FB5051743e2a53a765deBD0"`)
+    expect(result[0]).toBe(loadedAddress)
   })
 })
 
 describe('wallet_disconnect', () => {
   test('default: clears state', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
     })
 
     await provider.request({ method: 'wallet_connect' })
@@ -120,13 +108,13 @@ describe('wallet_disconnect', () => {
 describe('events', () => {
   test('behavior: does not emit accountsChanged on duplicate login', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
     })
 
     await provider.request({ method: 'wallet_connect' })
 
     const events: unknown[] = []
-    provider.on('accountsChanged', (accounts) => events.push(accounts))
+    provider.on('accountsChanged', (accts) => events.push(accts))
 
     await provider.request({ method: 'wallet_connect' })
 
@@ -137,15 +125,16 @@ describe('events', () => {
 describe('eth_sendTransaction', () => {
   test('default: sends transaction and returns hash', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
+    await fundAccount(address)
 
     const hash = await provider.request({
       method: 'eth_sendTransaction',
-      params: [{ calls: [{ to: webAuthnAccounts[1].address }] }],
+      params: [{ calls: [{ to: address }] }],
     })
 
     expect(hash).toMatch(/^0x[0-9a-f]{64}$/)
@@ -155,18 +144,33 @@ describe('eth_sendTransaction', () => {
 describe('eth_sendTransactionSync', () => {
   test('default: sends transaction and returns receipt', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
+    await fundAccount(address)
 
     const receipt = await provider.request({
       method: 'eth_sendTransactionSync',
-      params: [{ calls: [{ to: webAuthnAccounts[1].address }] }],
+      params: [{ calls: [{ to: address }] }],
     })
 
-    const { blockHash, blockNumber, cumulativeGasUsed, effectiveGasPrice, gasUsed, logs, logsBloom, transactionHash, transactionIndex, ...rest } = receipt
+    const {
+      blockHash,
+      blockNumber,
+      cumulativeGasUsed,
+      effectiveGasPrice,
+      gasUsed,
+      logs,
+      logsBloom,
+      transactionHash,
+      transactionIndex,
+      from,
+      to,
+      feePayer,
+      ...rest
+    } = receipt
     expect(blockHash).toBeDefined()
     expect(blockNumber).toBeDefined()
     expect(cumulativeGasUsed).toBeDefined()
@@ -176,14 +180,14 @@ describe('eth_sendTransactionSync', () => {
     expect(logsBloom).toBeDefined()
     expect(transactionHash).toBeDefined()
     expect(transactionIndex).toBeDefined()
+    expect(from).toMatch(/^0x[0-9a-f]{40}$/)
+    expect(to).toMatch(/^0x[0-9a-f]{40}$/)
+    expect(feePayer).toMatch(/^0x[0-9a-f]{40}$/)
     expect(rest).toMatchInlineSnapshot(`
       {
         "contractAddress": null,
-        "feePayer": "0x1ecba262e4510f333fb5051743e2a53a765debd0",
         "feeToken": "0x20c0000000000000000000000000000000000000",
-        "from": "0x1ecba262e4510f333fb5051743e2a53a765debd0",
         "status": "success",
-        "to": "0xb08a557649c30b96c28825748da6a940d6c8972e",
         "type": "0x76",
       }
     `)
@@ -193,15 +197,16 @@ describe('eth_sendTransactionSync', () => {
 describe('eth_signTransaction', () => {
   test('default: signs transaction and returns serialized', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
+    await fundAccount(address)
 
     const signed = await provider.request({
       method: 'eth_signTransaction',
-      params: [{ calls: [{ to: webAuthnAccounts[1].address }] }],
+      params: [{ calls: [{ to: address }] }],
     })
 
     expect(signed).toMatch(/^0x/)
@@ -209,15 +214,16 @@ describe('eth_signTransaction', () => {
 
   test('behavior: signed transaction can be sent via eth_sendRawTransactionSync', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
+    await fundAccount(address)
 
     const signed = await provider.request({
       method: 'eth_signTransaction',
-      params: [{ calls: [{ to: webAuthnAccounts[1].address }] }],
+      params: [{ calls: [{ to: address }] }],
     })
 
     const receipt = await provider.request({
@@ -233,17 +239,18 @@ describe('eth_signTransaction', () => {
 describe('wallet_sendCalls', () => {
   test('default: sends calls and returns id', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
+    await fundAccount(address)
 
     const result = await provider.request({
       method: 'wallet_sendCalls',
       params: [
         {
-          calls: [{ to: webAuthnAccounts[1].address }],
+          calls: [{ to: address }],
           chainId: `0x${chain.id.toString(16)}`,
           version: '2.0.0',
         },
@@ -255,17 +262,18 @@ describe('wallet_sendCalls', () => {
 
   test('behavior: with sync capability returns id and sync capability', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
+    await fundAccount(address)
 
     const result = await provider.request({
       method: 'wallet_sendCalls',
       params: [
         {
-          calls: [{ to: webAuthnAccounts[1].address }],
+          calls: [{ to: address }],
           capabilities: { sync: true },
           chainId: `0x${chain.id.toString(16)}`,
           version: '2.0.0',
@@ -283,17 +291,18 @@ describe('wallet_sendCalls', () => {
 
   test('behavior: sync false uses async path', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
+    await fundAccount(address)
 
     const result = await provider.request({
       method: 'wallet_sendCalls',
       params: [
         {
-          calls: [{ to: webAuthnAccounts[1].address }],
+          calls: [{ to: address }],
           capabilities: { sync: false },
           chainId: `0x${chain.id.toString(16)}`,
           version: '2.0.0',
@@ -313,16 +322,16 @@ describe('wallet_sendCalls', () => {
 describe('personal_sign', () => {
   test('default: signs a message and returns signature', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
 
     const message = Hex.fromString('hello world')
     const signature = await provider.request({
       method: 'personal_sign',
-      params: [message, webAuthnAccounts[0].address],
+      params: [message, address],
     })
 
     expect(signature).toMatch(/^0x[0-9a-f]+$/)
@@ -330,20 +339,21 @@ describe('personal_sign', () => {
 
   test('behavior: signature is verifiable on-chain', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
+    await fundAccount(address)
 
     const message = Hex.fromString('hello world')
     const signature = await provider.request({
       method: 'personal_sign',
-      params: [message, webAuthnAccounts[0].address],
+      params: [message, address],
     })
 
     const valid = await verifyMessage(getClient(), {
-      address: webAuthnAccounts[0].address,
+      address,
       message: { raw: message },
       signature,
     })
@@ -366,15 +376,15 @@ describe('eth_signTypedData_v4', () => {
 
   test('default: signs typed data and returns signature', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
 
     const signature = await provider.request({
       method: 'eth_signTypedData_v4',
-      params: [webAuthnAccounts[0].address, JSON.stringify(typedData)],
+      params: [address, JSON.stringify(typedData)],
     })
 
     expect(signature).toMatch(/^0x[0-9a-f]+$/)
@@ -382,22 +392,35 @@ describe('eth_signTypedData_v4', () => {
 
   test('behavior: signature is verifiable on-chain', async () => {
     const provider = Provider.create({
-      adapter: local(),
+      adapter: webAuthn(),
       chains: [chain],
     })
 
-    await provider.request({ method: 'eth_requestAccounts' })
+    const address = (await provider.request({ method: 'eth_requestAccounts' }))[0]!
+    await fundAccount(address)
 
     const signature = await provider.request({
       method: 'eth_signTypedData_v4',
-      params: [webAuthnAccounts[0].address, JSON.stringify(typedData)],
+      params: [address, JSON.stringify(typedData)],
     })
 
     const valid = await verifyTypedData(getClient(), {
-      address: webAuthnAccounts[0].address,
+      address,
       signature,
       ...typedData,
     })
     expect(valid).toMatchInlineSnapshot(`true`)
   })
 })
+
+/** Funds an account with fee tokens so it can send transactions. */
+async function fundAccount(address: Address) {
+  const client = getClient()
+  await Actions.token.transferSync(client, {
+    account: accounts[0]!,
+    feeToken: Addresses.pathUsd,
+    to: address,
+    token: Addresses.pathUsd,
+    amount: parseUnits('10', 6),
+  })
+}

@@ -1,6 +1,6 @@
+import { Provider } from 'ox'
 import type { Hex } from 'viem'
 import type { Address, JsonRpcAccount, LocalAccount } from 'viem/accounts'
-import { Provider } from 'ox'
 import { Account as TempoAccount } from 'viem/tempo'
 
 import type { OneOf } from '../internal/types.js'

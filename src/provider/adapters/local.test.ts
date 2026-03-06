@@ -2,7 +2,7 @@ import { createClient, http } from 'viem'
 import { tempoLocalnet } from 'viem/chains'
 import { describe, expect, test } from 'vitest'
 
-import { local } from '../../../test/adapters.js'
+import { headlessWebAuthn } from '../../../test/adapters.js'
 import { accounts as core_accounts, privateKeys } from '../../../test/config.js'
 import * as Account from '../Account.js'
 import * as Store from '../Store.js'
@@ -16,13 +16,13 @@ describe('local', () => {
 
       expect(accounts.map((a) => a.address)).toMatchInlineSnapshot(`
         [
-          "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "0x1ecBa262e4510F333FB5051743e2a53a765deBD0",
         ]
       `)
       expect(store.getState().status).toMatchInlineSnapshot(`"connected"`)
       expect(store.getState().accounts.map((a) => a.address)).toMatchInlineSnapshot(`
         [
-          "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "0x1ecBa262e4510F333FB5051743e2a53a765deBD0",
         ]
       `)
     })
@@ -31,7 +31,7 @@ describe('local', () => {
   describe('createAccount', () => {
     test('default: creates account and updates store', async () => {
       const { adapter, store } = setup({
-        createAccounts: [
+        createAccount: async () => [
           {
             address: core_accounts[1].address,
             keyType: 'secp256k1',
@@ -54,7 +54,7 @@ describe('local', () => {
       const { adapter } = setup()
 
       await expect(adapter.actions.createAccount()).rejects.toThrowErrorMatchingInlineSnapshot(
-        `[Error: \`createAccount\` not configured on adapter.]`,
+        `[Provider.UnsupportedMethodError: \`createAccount\` not configured on adapter.]`,
       )
     })
   })
@@ -66,7 +66,7 @@ describe('local', () => {
       await adapter.actions.loadAccounts()
       expect(store.getState().status).toMatchInlineSnapshot(`"connected"`)
 
-      await adapter.actions.disconnect()
+      await adapter.actions.disconnect!()
 
       expect(store.getState()).toMatchInlineSnapshot(`
         {
@@ -83,15 +83,15 @@ describe('local', () => {
     test('default: updates chainId in store', async () => {
       const { adapter, store } = setup()
 
-      await adapter.actions.switchChain({ chainId: 42 })
+      await adapter.actions.switchChain!({ chainId: 42 })
 
       expect(store.getState().chainId).toMatchInlineSnapshot(`42`)
     })
   })
 })
 
-function setup(options: local.Options = {}) {
-  const adapter = local(options)
+function setup(options: headlessWebAuthn.Options = {}) {
+  const adapter = headlessWebAuthn(options)
   const store = Store.create({ chainId: tempoLocalnet.id })
   adapter.setup?.({
     getAccount: (address) => Account.fromAddress({ address, signable: true, store }),
