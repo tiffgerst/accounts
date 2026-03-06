@@ -33,6 +33,10 @@ export function App() {
       <h2>Transactions</h2>
       <Transactions />
 
+      <h2>Receipts</h2>
+      <EthGetTransactionReceipt />
+      <WalletGetCallsStatus />
+
       <h2>RPC Proxy (fallthrough)</h2>
       <EthBlockNumber />
     </div>
@@ -341,12 +345,75 @@ function Transactions() {
         >
           wallet_sendCalls (sync)
         </button>
+
       </div>
 
       {method && <h4>{method}</h4>}
       {error && <pre style={{ color: 'red' }}>{`${error.name}: ${error.message}`}</pre>}
       {result !== undefined && <pre>{Json.stringify(result, null, 2)}</pre>}
     </div>
+  )
+}
+
+// -- Receipts --
+
+function EthGetTransactionReceipt() {
+  const [hash, setHash] = useState('')
+  const [result, error, execute] = useRequest()
+  return (
+    <Method method="eth_getTransactionReceipt" result={result} error={error}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          value={hash}
+          onChange={(e) => setHash(e.target.value)}
+          placeholder="Enter tx hash (0x...)"
+          style={{ flex: 1, fontFamily: 'monospace' }}
+        />
+        <button
+          disabled={!hash}
+          onClick={() =>
+            execute(() =>
+              provider.request({
+                method: 'eth_getTransactionReceipt',
+                params: [hash as `0x${string}`],
+              }),
+            )
+          }
+        >
+          Get Receipt
+        </button>
+      </div>
+    </Method>
+  )
+}
+
+function WalletGetCallsStatus() {
+  const [id, setId] = useState('')
+  const [result, error, execute] = useRequest()
+  return (
+    <Method method="wallet_getCallsStatus" result={result} error={error}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          value={id}
+          onChange={(e) => setId(e.target.value)}
+          placeholder="Enter calls ID (0x...)"
+          style={{ flex: 1, fontFamily: 'monospace' }}
+        />
+        <button
+          disabled={!id}
+          onClick={() =>
+            execute(() =>
+              provider.request({
+                method: 'wallet_getCallsStatus',
+                params: [id],
+              }),
+            )
+          }
+        >
+          Get Status
+        </button>
+      </div>
+    </Method>
   )
 }
 

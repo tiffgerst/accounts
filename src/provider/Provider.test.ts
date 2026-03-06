@@ -578,6 +578,57 @@ describe('wallet_sendCalls', () => {
         "sync": true,
       }
     `)
+    expect(result.atomic).toMatchInlineSnapshot(`true`)
+    expect(result.status).toMatchInlineSnapshot(`200`)
+    expect(result.version).toMatchInlineSnapshot(`"2.0.0"`)
+    expect(result.receipts?.length).toMatchInlineSnapshot(`1`)
+    expect(result.receipts?.[0]?.status).toMatchInlineSnapshot(`"success"`)
+  })
+})
+
+describe('wallet_getCallsStatus', () => {
+  test('default: returns encoded status for a sent call batch', async () => {
+    const provider = Provider.create({
+      adapter: headlessWebAuthn(),
+      chains: [chain],
+    })
+
+    await provider.request({ method: 'eth_requestAccounts' })
+
+    const { id } = await provider.request({
+      method: 'wallet_sendCalls',
+      params: [
+        {
+          calls: [transferCall],
+          capabilities: { sync: true },
+        },
+      ],
+    })
+
+    const result = await provider.request({
+      method: 'wallet_getCallsStatus',
+      params: [id],
+    })
+
+    expect(result.atomic).toMatchInlineSnapshot(`true`)
+    expect(result.status).toMatchInlineSnapshot(`200`)
+    expect(result.version).toMatchInlineSnapshot(`"2.0.0"`)
+    expect(result.receipts?.length).toMatchInlineSnapshot(`1`)
+    expect(result.receipts?.[0]?.status).toMatchInlineSnapshot(`"0x1"`)
+  })
+
+  test('error: throws for unsupported id format', async () => {
+    const provider = Provider.create({
+      adapter: headlessWebAuthn(),
+      chains: [chain],
+    })
+
+    await expect(
+      provider.request({
+        method: 'wallet_getCallsStatus',
+        params: ['0xdeadbeef'],
+      }),
+    ).rejects.toThrowErrorMatchingInlineSnapshot(`[RpcResponse.InternalError: \`id\` not supported]`)
   })
 })
 

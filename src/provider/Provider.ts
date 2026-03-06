@@ -180,14 +180,25 @@ export function create(options: create.Options): create.ReturnType {
                 calls,
                 _encoded: { method: 'eth_sendTransaction' as const, params: [{}] as const },
               }
-              const hash = await (async () => {
-                if (!sync) return adapter.actions.sendTransaction(txRequest)
-                const receipt = await adapter.actions.sendTransactionSync(txRequest as never)
-                return (receipt as { transactionHash: `0x${string}` }).transactionHash
-              })()
+              if (!sync) {
+                const hash = await adapter.actions.sendTransaction(txRequest)
+                const chainId = Hex.fromNumber(store.getState().chainId)
+                const id = Hex.concat(hash, Hex.padLeft(chainId, 32), sendCallsMagic)
+                return { capabilities: { sync }, id }
+              }
+              const receipt = await adapter.actions.sendTransactionSync(txRequest as never)
+              const hash = (receipt as { transactionHash: `0x${string}` }).transactionHash
               const chainId = Hex.fromNumber(store.getState().chainId)
               const id = Hex.concat(hash, Hex.padLeft(chainId, 32), sendCallsMagic)
-              return { capabilities: { sync }, id }
+              return {
+                atomic: true,
+                capabilities: { sync },
+                chainId: store.getState().chainId,
+                id,
+                receipts: [receipt],
+                status: (receipt as { status: string }).status === 'success' ? 200 : 500,
+                version: '2.0.0',
+              }
             }
 
             case 'wallet_getBalances': {
@@ -220,6 +231,29 @@ export function create(options: create.Options): create.ReturnType {
                   }
                 }),
               )
+            }
+
+            case 'wallet_getCallsStatus': {
+              const [id] = request._decoded.params ?? []
+              if (!id) throw new Error('`id` not found')
+              if (!id.endsWith(sendCallsMagic.slice(2)))
+                throw new Error('`id` not supported')
+              Hex.assert(id)
+              const hash = Hex.slice(id, 0, 32)
+              const chainId = Hex.slice(id, 32, 64)
+              const client = Client.fromChainId(Number(chainId), { chains, store })
+              const receipt = await client.request({
+                method: 'eth_getTransactionReceipt',
+                params: [hash],
+              })
+              return {
+                atomic: true,
+                chainId: Number(chainId),
+                id,
+                receipts: receipt ? [receipt] : [],
+                status: receipt?.status === '0x1' ? 200 : 500,
+                version: '2.0.0',
+              }
             }
 
             case 'wallet_getCapabilities': {

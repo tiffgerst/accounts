@@ -161,8 +161,13 @@ export const wallet_sendCalls = Schema.defineItem({
     ),
   ),
   returns: z.object({
+    atomic: z.optional(z.boolean()),
     capabilities: sendCallsCapabilities,
+    chainId: z.optional(z.number()),
     id: z.string(),
+    receipts: z.optional(z.array(receipt)),
+    status: z.optional(z.number()),
+    version: z.optional(z.string()),
   }),
 })
 export type wallet_sendCalls = Schema.DefineItem<typeof wallet_sendCalls>
@@ -272,6 +277,20 @@ export const wallet_disconnect = Schema.defineItem({
   returns: undefined,
 })
 export type wallet_disconnect = Schema.DefineItem<typeof wallet_disconnect>
+
+export const wallet_getCallsStatus = Schema.defineItem({
+  method: z.literal('wallet_getCallsStatus'),
+  params: z.optional(z.readonly(z.tuple([z.string()]))),
+  returns: z.object({
+    atomic: z.boolean(),
+    chainId: z.number(),
+    id: z.string(),
+    receipts: z.optional(z.array(receipt)),
+    status: z.number(),
+    version: z.string(),
+  }),
+})
+export type wallet_getCallsStatus = Schema.DefineItem<typeof wallet_getCallsStatus>
 
 export const wallet_switchEthereumChain = Schema.defineItem({
   method: z.literal('wallet_switchEthereumChain'),
