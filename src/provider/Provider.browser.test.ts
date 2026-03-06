@@ -1,13 +1,19 @@
 import { Hex } from 'ox'
-import { type Address, parseUnits } from 'viem'
-import { verifyMessage, verifyTypedData } from 'viem/actions'
+import { type Address, createClient, custom, parseUnits } from 'viem'
+import { verifyHash, verifyMessage, verifyTypedData } from 'viem/actions'
 import { Actions, Addresses } from 'viem/tempo'
 import { describe, expect, test } from 'vitest'
 import { requestProviders } from 'mipd'
 
-import { headlessWebAuthn, webAuthn } from '../../test/adapters.js'
-import { accounts, chain, getClient } from '../../test/config.js'
+import { accounts, chain, http } from '../../test/config.js'
+import * as Ceremony from './Ceremony.js'
 import * as Provider from './Provider.js'
+import { webAuthn } from './adapters/webAuthn.js'
+
+const ceremony = Ceremony.local({
+  origin: 'http://localhost',
+  rpId: 'localhost',
+})
 
 const transferCall = Actions.token.transfer.call({
   to: Addresses.pathUsd,
@@ -18,7 +24,7 @@ const transferCall = Actions.token.transfer.call({
 describe('create', () => {
   test('default: returns an EIP-1193 provider', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
     })
     expect(provider).toBeDefined()
     expect(typeof provider.request).toMatchInlineSnapshot(`"function"`)
@@ -28,7 +34,7 @@ describe('create', () => {
 describe('eth_chainId', () => {
   test('default: returns configured chain ID as hex', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
     })
 
     const chainId = await provider.request({ method: 'eth_chainId' })
@@ -39,7 +45,7 @@ describe('eth_chainId', () => {
 describe('eth_requestAccounts', () => {
   test('default: loads accounts via adapter', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
     })
 
     const accts = await provider.request({ method: 'eth_requestAccounts' })
@@ -51,7 +57,7 @@ describe('eth_requestAccounts', () => {
 describe('wallet_connect', () => {
   test('default: returns ERC-7846 response', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
     })
 
     const result = await provider.request({ method: 'wallet_connect' })
@@ -62,7 +68,7 @@ describe('wallet_connect', () => {
 
   test('behavior: register preserves existing accounts', async () => {
     const provider = Provider.create({
-      adapter: webAuthn({ withCreate: true }),
+      adapter: webAuthn({ ceremony }),
     })
 
     await provider.request({ method: 'wallet_connect' })
@@ -76,9 +82,148 @@ describe('wallet_connect', () => {
     expect(result.accounts[0]!.address).not.toBe(result.accounts[1]!.address)
   })
 
+  test('behavior: login with digest returns signature in capabilities', async () => {
+    const provider = Provider.create({
+      adapter: webAuthn({ ceremony }),
+      chains: [chain],
+    })
+
+    // Register first to create a credential
+    await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+    await provider.request({ method: 'wallet_disconnect' })
+
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { digest: '0xdeadbeef' } }],
+    })
+    expect(result.accounts[0]!.capabilities.signature).toMatch(/^0x[0-9a-f]+$/)
+  })
+
+  test('behavior: digest signature is verifiable on-chain', async () => {
+    const provider = Provider.create({
+      adapter: webAuthn({ ceremony }),
+      chains: [chain],
+    })
+
+    // Register and fund
+    const regResult = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+    const address = regResult.accounts[0]!.address
+    await fundAccount(address)
+
+    // Disconnect and login with digest
+    await provider.request({ method: 'wallet_disconnect' })
+    const digest = '0xdeadbeef' as const
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { digest } }],
+    })
+
+    const client = createClient({ chain, transport: custom(provider) })
+    const valid = await verifyHash(client, {
+      address,
+      hash: digest,
+      signature: result.accounts[0]!.capabilities.signature!,
+    })
+    expect(valid).toMatchInlineSnapshot(`true`)
+  })
+
+  test('behavior: login without digest returns empty capabilities', async () => {
+    const provider = Provider.create({
+      adapter: webAuthn({ ceremony }),
+    })
+
+    const result = await provider.request({ method: 'wallet_connect' })
+    expect(result.accounts[0]!.capabilities).toMatchInlineSnapshot(`{}`)
+  })
+
+  test('behavior: register without digest returns empty capabilities', async () => {
+    const provider = Provider.create({
+      adapter: webAuthn({ ceremony }),
+    })
+
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+    expect(result.accounts[0]!.capabilities).toMatchInlineSnapshot(`{}`)
+  })
+
+  test('behavior: register with digest returns signature in capabilities', async () => {
+    const provider = Provider.create({
+      adapter: webAuthn({ ceremony }),
+      chains: [chain],
+    })
+
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register', digest: '0xdeadbeef' } }],
+    })
+    expect(result.accounts[0]!.capabilities.signature).toMatch(/^0x[0-9a-f]+$/)
+  })
+
+  test('behavior: register digest signature is verifiable on-chain', async () => {
+    const provider = Provider.create({
+      adapter: webAuthn({ ceremony }),
+      chains: [chain],
+    })
+
+    const digest = '0xdeadbeef' as const
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register', digest } }],
+    })
+
+    const client = createClient({ chain, transport: custom(provider) })
+    const valid = await verifyHash(client, {
+      address: result.accounts[0]!.address,
+      hash: digest,
+      signature: result.accounts[0]!.capabilities.signature!,
+    })
+    expect(valid).toMatchInlineSnapshot(`true`)
+  })
+
+  test('behavior: signature only on signer account, not others', async () => {
+    const provider = Provider.create({
+      adapter: webAuthn({ ceremony }),
+      chains: [chain],
+    })
+
+    // Register first, then login with digest
+    await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+    await provider.request({ method: 'wallet_disconnect' })
+
+    // Login creates a new credential, register another
+    await provider.request({ method: 'wallet_connect' })
+    await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+
+    // Now login with digest — signature only on the loaded account
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { digest: '0xabcd' } }],
+    })
+
+    const withSig = result.accounts.filter((a) => a.capabilities.signature)
+    const withoutSig = result.accounts.filter((a) => !a.capabilities.signature)
+    expect(withSig).toHaveLength(1)
+    expect(withSig[0]!.capabilities.signature).toMatch(/^0x[0-9a-f]+$/)
+    expect(withoutSig.length).toBeGreaterThanOrEqual(1)
+  })
+
   test('behavior: login deduplicates and sets active account', async () => {
     const provider = Provider.create({
-      adapter: webAuthn({ withCreate: true }),
+      adapter: webAuthn({ ceremony }),
     })
 
     // Register then login with same loadAccounts
@@ -101,7 +246,7 @@ describe('wallet_connect', () => {
 describe('wallet_disconnect', () => {
   test('default: clears state', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
     })
 
     await provider.request({ method: 'wallet_connect' })
@@ -115,7 +260,7 @@ describe('wallet_disconnect', () => {
 describe('events', () => {
   test('behavior: does not emit accountsChanged on duplicate login', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
     })
 
     await provider.request({ method: 'wallet_connect' })
@@ -132,7 +277,7 @@ describe('events', () => {
 describe('eth_sendTransaction', () => {
   test('default: sends transaction and returns hash', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -151,7 +296,7 @@ describe('eth_sendTransaction', () => {
 describe('eth_sendTransactionSync', () => {
   test('default: sends transaction and returns receipt', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -204,7 +349,7 @@ describe('eth_sendTransactionSync', () => {
 describe('eth_signTransaction', () => {
   test('default: signs transaction and returns serialized', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -221,7 +366,7 @@ describe('eth_signTransaction', () => {
 
   test('behavior: signed transaction can be sent via eth_sendRawTransactionSync', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -246,7 +391,7 @@ describe('eth_signTransaction', () => {
 describe('wallet_sendCalls', () => {
   test('default: sends calls and returns id', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -267,7 +412,7 @@ describe('wallet_sendCalls', () => {
 
   test('behavior: with sync capability returns id and sync capability', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -294,7 +439,7 @@ describe('wallet_sendCalls', () => {
 
   test('behavior: sync false uses async path', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -323,7 +468,7 @@ describe('wallet_sendCalls', () => {
 describe('personal_sign', () => {
   test('default: signs a message and returns signature', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -340,7 +485,7 @@ describe('personal_sign', () => {
 
   test('behavior: signature is verifiable on-chain', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -353,7 +498,8 @@ describe('personal_sign', () => {
       params: [message, address],
     })
 
-    const valid = await verifyMessage(getClient(), {
+    const client = createClient({ chain, transport: custom(provider) })
+    const valid = await verifyMessage(client, {
       address,
       message: { raw: message },
       signature,
@@ -377,7 +523,7 @@ describe('eth_signTypedData_v4', () => {
 
   test('default: signs typed data and returns signature', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -393,7 +539,7 @@ describe('eth_signTypedData_v4', () => {
 
   test('behavior: signature is verifiable on-chain', async () => {
     const provider = Provider.create({
-      adapter: webAuthn(),
+      adapter: webAuthn({ ceremony }),
       chains: [chain],
     })
 
@@ -405,7 +551,8 @@ describe('eth_signTypedData_v4', () => {
       params: [address, JSON.stringify(typedData)],
     })
 
-    const valid = await verifyTypedData(getClient(), {
+    const client = createClient({ chain, transport: custom(provider) })
+    const valid = await verifyTypedData(client, {
       address,
       signature,
       ...typedData,
@@ -420,7 +567,8 @@ describe('eip-6963', () => {
     const unsubscribe = requestProviders((detail) => discovered.push(detail as never))
 
     Provider.create({
-      adapter: headlessWebAuthn({
+      adapter: webAuthn({
+        ceremony,
         icon: 'data:image/svg+xml,<svg></svg>',
         name: 'Test Wallet',
         rdns: 'com.example.test',
@@ -446,7 +594,7 @@ describe('eip-6963', () => {
     const unsubscribe = requestProviders((detail) => discovered.push(detail as never))
 
     Provider.create({
-      adapter: headlessWebAuthn({ name: 'My Wallet' }),
+      adapter: webAuthn({ ceremony, name: 'My Wallet' }),
     })
 
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -462,7 +610,7 @@ describe('eip-6963', () => {
 
 /** Funds an account with fee tokens so it can send transactions. */
 async function fundAccount(address: Address) {
-  const client = getClient()
+  const client = createClient({ chain, transport: http() })
   await Actions.token.transferSync(client, {
     account: accounts[0]!,
     feeToken: Addresses.pathUsd,

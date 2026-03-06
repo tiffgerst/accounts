@@ -22,7 +22,7 @@ export type Adapter = {
     /** Disconnect hook for adapter-specific cleanup. */
     disconnect?: (() => Promise<void>) | undefined
     /** Discover existing accounts (e.g. WebAuthn assertion). */
-    loadAccounts: () => Promise<loadAccounts.ReturnType>
+    loadAccounts: (params?: loadAccounts.Parameters | undefined) => Promise<loadAccounts.ReturnType>
     /** Send a transaction. */
     sendTransaction: (
       request: ActionRequest<Rpc.eth_sendTransaction>,
@@ -70,14 +70,33 @@ export declare namespace setup {
 
 export declare namespace createAccount {
   type Parameters = {
+    /** Digest to sign. */
+    digest?: Hex | undefined
     /** Display name for the new account (e.g. credential name for WebAuthn). */
     name: string
+    /** Opaque user identifier (e.g. for WebAuthn `user.id`). */
+    userId?: string | undefined
   }
-  type ReturnType = readonly Store.Account[]
+  type ReturnType = {
+    accounts: readonly Store.Account[]
+    /** Signature over the digest, if one was provided. */
+    signature?: Hex | undefined
+  }
 }
 
 export declare namespace loadAccounts {
-  type ReturnType = readonly Store.Account[]
+  type Parameters = {
+    /** Digest to sign. */
+    digest?: Hex | undefined
+    /** Credential ID to restrict authentication to a specific credential. */
+    credentialId?: string | undefined
+  }
+  type ReturnType = {
+    /** Loaded accounts. */
+    accounts: readonly Store.Account[]
+    /** Signature over the digest, if one was provided. */
+    signature?: Hex | undefined
+  }
 }
 
 export declare namespace signPersonalMessage {

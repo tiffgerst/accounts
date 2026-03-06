@@ -1,12 +1,12 @@
 import { Hex, Provider as core_Provider } from 'ox'
-import { parseUnits } from 'viem'
-import { waitForTransactionReceipt } from 'viem/actions'
+import { createClient, custom, parseUnits } from 'viem'
+import { verifyHash, verifyMessage, verifyTypedData, waitForTransactionReceipt } from 'viem/actions'
 import { tempo, tempoModerato } from 'viem/chains'
 import { Actions, Addresses } from 'viem/tempo'
 import { describe, expect, test } from 'vitest'
 
 import { headlessWebAuthn } from '../../test/adapters.js'
-import { chain, getClient, webAuthnAccounts } from '../../test/config.js'
+import { chain, webAuthnAccounts } from '../../test/config.js'
 import * as Provider from './Provider.js'
 
 const transferCall = Actions.token.transfer.call({
@@ -49,7 +49,7 @@ describe('eth_accounts', () => {
   test('behavior: returns accounts after connecting', async () => {
     const provider = Provider.create({
       adapter: headlessWebAuthn({
-        loadAccounts: async () => [webAuthnAccounts[0], webAuthnAccounts[1]],
+        loadAccounts: async () => ({ accounts: [webAuthnAccounts[0], webAuthnAccounts[1]] }),
       }),
     })
 
@@ -81,8 +81,8 @@ describe('eth_requestAccounts', () => {
   test('behavior: returns active account first', async () => {
     const provider = Provider.create({
       adapter: headlessWebAuthn({
-        loadAccounts: async () => [webAuthnAccounts[0]],
-        createAccount: async () => [webAuthnAccounts[1]],
+        loadAccounts: async () => ({ accounts: [webAuthnAccounts[0]] }),
+        createAccount: async () => ({ accounts: [webAuthnAccounts[1]] }),
       }),
     })
 
@@ -121,8 +121,8 @@ describe('wallet_connect', () => {
   test('behavior: with register capability calls createAccount', async () => {
     const provider = Provider.create({
       adapter: headlessWebAuthn({
-        loadAccounts: async () => [webAuthnAccounts[0]],
-        createAccount: async () => [webAuthnAccounts[1]],
+        loadAccounts: async () => ({ accounts: [webAuthnAccounts[0]] }),
+        createAccount: async () => ({ accounts: [webAuthnAccounts[1]] }),
       }),
     })
 
@@ -145,8 +145,8 @@ describe('wallet_connect', () => {
   test('behavior: register preserves existing accounts and sets activeAccount', async () => {
     const provider = Provider.create({
       adapter: headlessWebAuthn({
-        loadAccounts: async () => [webAuthnAccounts[0]],
-        createAccount: async () => [webAuthnAccounts[1]],
+        loadAccounts: async () => ({ accounts: [webAuthnAccounts[0]] }),
+        createAccount: async () => ({ accounts: [webAuthnAccounts[1]] }),
       }),
     })
 
@@ -186,8 +186,8 @@ describe('wallet_connect', () => {
   test('behavior: login preserves existing accounts and deduplicates', async () => {
     const provider = Provider.create({
       adapter: headlessWebAuthn({
-        loadAccounts: async () => [webAuthnAccounts[0]],
-        createAccount: async () => [webAuthnAccounts[1]],
+        loadAccounts: async () => ({ accounts: [webAuthnAccounts[0]] }),
+        createAccount: async () => ({ accounts: [webAuthnAccounts[1]] }),
       }),
     })
 
@@ -201,11 +201,12 @@ describe('wallet_connect', () => {
 
     expect(provider.store.getState().accounts.map((a) => a.address)).toMatchInlineSnapshot(`
       [
+        "0xB08a557649C30B96c28825748da6a940D6c8972e",
         "0x1ecBa262e4510F333FB5051743e2a53a765deBD0",
       ]
     `)
     // activeAccount should point to the loaded account
-    expect(provider.store.getState().activeAccount).toMatchInlineSnapshot(`0`)
+    expect(provider.store.getState().activeAccount).toMatchInlineSnapshot(`1`)
   })
 
   test('behavior: register passes name to createAccount', async () => {
@@ -214,7 +215,7 @@ describe('wallet_connect', () => {
       adapter: headlessWebAuthn({
         createAccount: async ({ name }) => {
           receivedName = name
-          return [webAuthnAccounts[1]]
+          return { accounts: [webAuthnAccounts[1]] }
         },
       }),
     })
@@ -232,7 +233,7 @@ describe('wallet_connect', () => {
       adapter: headlessWebAuthn({
         createAccount: async ({ name }) => {
           receivedName = name
-          return [webAuthnAccounts[1]]
+          return { accounts: [webAuthnAccounts[1]] }
         },
       }),
     })
@@ -247,8 +248,8 @@ describe('wallet_connect', () => {
   test('behavior: login sets activeAccount to loaded account', async () => {
     const provider = Provider.create({
       adapter: headlessWebAuthn({
-        loadAccounts: async () => [webAuthnAccounts[0]],
-        createAccount: async () => [webAuthnAccounts[1]],
+        loadAccounts: async () => ({ accounts: [webAuthnAccounts[0]] }),
+        createAccount: async () => ({ accounts: [webAuthnAccounts[1]] }),
       }),
     })
 
@@ -263,6 +264,121 @@ describe('wallet_connect', () => {
     expect(result.accounts[0]!.address).toMatchInlineSnapshot(
       `"0x1ecBa262e4510F333FB5051743e2a53a765deBD0"`,
     )
+  })
+
+  test('behavior: login with digest returns signature in account capabilities', async () => {
+    const provider = Provider.create({ adapter: headlessWebAuthn() })
+
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { digest: '0x1234' } }],
+    })
+    expect(result.accounts[0]!.capabilities.signature).toMatch(/^0x[0-9a-f]+$/)
+  })
+
+  test('behavior: digest signature is verifiable on-chain', async () => {
+    const provider = Provider.create({ adapter: headlessWebAuthn(), chains: [chain] })
+    const client = createClient({ chain, transport: custom(provider) })
+
+    const digest = '0xdeadbeef' as const
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { digest } }],
+    })
+
+    const valid = await verifyHash(client, {
+      address: webAuthnAccounts[0].address,
+      hash: digest,
+      signature: result.accounts[0]!.capabilities.signature!,
+    })
+    expect(valid).toMatchInlineSnapshot(`true`)
+  })
+
+  test('behavior: login without digest returns empty capabilities', async () => {
+    const provider = Provider.create({ adapter: headlessWebAuthn() })
+
+    const result = await provider.request({ method: 'wallet_connect' })
+    expect(result.accounts[0]!.capabilities).toMatchInlineSnapshot(`{}`)
+  })
+
+  test('behavior: register without digest returns empty capabilities', async () => {
+    const provider = Provider.create({
+      adapter: headlessWebAuthn({
+        createAccount: async () => ({ accounts: [webAuthnAccounts[1]] }),
+      }),
+    })
+
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+    expect(result.accounts[0]!.capabilities).toMatchInlineSnapshot(`{}`)
+  })
+
+  test('behavior: register with digest returns signature in capabilities', async () => {
+    const provider = Provider.create({
+      adapter: headlessWebAuthn({
+        createAccount: async () => ({ accounts: [webAuthnAccounts[1]] }),
+      }),
+      chains: [chain],
+    })
+
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register', digest: '0x1234' } }],
+    })
+    expect(result.accounts[0]!.capabilities.signature).toMatch(/^0x[0-9a-f]+$/)
+  })
+
+  test('behavior: register digest signature is verifiable on-chain', async () => {
+    const provider = Provider.create({
+      adapter: headlessWebAuthn({
+        createAccount: async () => ({ accounts: [webAuthnAccounts[1]] }),
+      }),
+      chains: [chain],
+    })
+    const client = createClient({ chain, transport: custom(provider) })
+
+    const digest = '0xdeadbeef' as const
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register', digest } }],
+    })
+
+    const valid = await verifyHash(client, {
+      address: webAuthnAccounts[1].address,
+      hash: digest,
+      signature: result.accounts[0]!.capabilities.signature!,
+    })
+    expect(valid).toMatchInlineSnapshot(`true`)
+  })
+
+  test('behavior: signature only on signer account, not others', async () => {
+    const provider = Provider.create({
+      adapter: headlessWebAuthn({
+        loadAccounts: async () => ({ accounts: [webAuthnAccounts[0]] }),
+        createAccount: async () => ({ accounts: [webAuthnAccounts[1]] }),
+      }),
+    })
+
+    // Register first, then login with digest
+    await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { digest: '0xabcd' } }],
+    })
+
+    const signer = result.accounts.find(
+      (a) => a.address === webAuthnAccounts[0].address,
+    )
+    const other = result.accounts.find(
+      (a) => a.address === webAuthnAccounts[1].address,
+    )
+    expect(signer!.capabilities.signature).toMatch(/^0x[0-9a-f]+$/)
+    expect(other!.capabilities).toMatchInlineSnapshot(`{}`)
   })
 })
 
@@ -427,7 +543,8 @@ describe('eth_sendTransaction', () => {
       params: [{ calls: [transferCall] }],
     })
 
-    const receipt = await waitForTransactionReceipt(getClient(), { hash })
+    const client = createClient({ chain, transport: custom(provider) })
+    const receipt = await waitForTransactionReceipt(client, { hash })
 
     const {
       blockHash,
@@ -505,7 +622,7 @@ describe('eth_sendTransactionSync', () => {
         "feePayer": "0x1ecba262e4510f333fb5051743e2a53a765debd0",
         "feeToken": "0x20c0000000000000000000000000000000000000",
         "from": "0x1ecba262e4510f333fb5051743e2a53a765debd0",
-        "status": "success",
+        "status": "0x1",
         "to": "0x20c0000000000000000000000000000000000000",
         "type": "0x76",
       }
@@ -863,12 +980,11 @@ describe('eth_signTypedData_v4', () => {
   })
 
   test('behavior: signature is verifiable on-chain', async () => {
-    const { verifyTypedData } = await import('viem/actions')
-
     const provider = Provider.create({
       adapter: headlessWebAuthn(),
       chains: [chain],
     })
+    const client = createClient({ chain, transport: custom(provider) })
 
     await provider.request({ method: 'eth_requestAccounts' })
 
@@ -877,7 +993,7 @@ describe('eth_signTypedData_v4', () => {
       params: [webAuthnAccounts[0].address, JSON.stringify(typedData)],
     })
 
-    const valid = await verifyTypedData(getClient(), {
+    const valid = await verifyTypedData(client, {
       address: webAuthnAccounts[0].address,
       signature,
       ...typedData,
@@ -923,12 +1039,11 @@ describe('personal_sign', () => {
   })
 
   test('behavior: signature is verifiable on-chain', async () => {
-    const { verifyMessage } = await import('viem/actions')
-
     const provider = Provider.create({
       adapter: headlessWebAuthn(),
       chains: [chain],
     })
+    const client = createClient({ chain, transport: custom(provider) })
 
     await provider.request({ method: 'eth_requestAccounts' })
 
@@ -938,7 +1053,7 @@ describe('personal_sign', () => {
       params: [message, webAuthnAccounts[0].address],
     })
 
-    const valid = await verifyMessage(getClient(), {
+    const valid = await verifyMessage(client, {
       address: webAuthnAccounts[0].address,
       message: { raw: message },
       signature,

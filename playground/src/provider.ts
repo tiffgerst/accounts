@@ -1,19 +1,38 @@
 import { generatePrivateKey } from 'viem/accounts'
 import { Account } from 'viem/tempo'
-import { local, Provider } from 'zyzz/provider'
+import { Ceremony, local, Provider, webAuthn } from 'zyzz/provider'
 
-const privateKey = generatePrivateKey()
-export const account = Account.fromSecp256k1(privateKey)
+export type AdapterType = 'secp256k1' | 'webAuthn'
 
-export const provider = Provider.create({
-  adapter: local({
-    loadAccounts: async () => [account],
-    createAccount: async () => {
-      const key = generatePrivateKey()
-      const account = Account.fromSecp256k1(key)
-      return [account]
-    },
-  }),
-  testnet: true,
-})
+export let provider = createProvider('secp256k1')
 
+export function createProvider(adapterType: AdapterType) {
+  if (adapterType === 'webAuthn') {
+    const ceremony = Ceremony.local({
+      origin: window.location.origin,
+      rpId: window.location.hostname,
+    })
+    return Provider.create({
+      adapter: webAuthn({ ceremony }),
+      testnet: true,
+    })
+  }
+
+  const privateKey = generatePrivateKey()
+  const account = Account.fromSecp256k1(privateKey)
+  return Provider.create({
+    adapter: local({
+      loadAccounts: async () => ({ accounts: [account] }),
+      createAccount: async () => {
+        const key = generatePrivateKey()
+        const newAccount = Account.fromSecp256k1(key)
+        return { accounts: [newAccount] }
+      },
+    }),
+    testnet: true,
+  })
+}
+
+export function switchAdapter(adapterType: AdapterType) {
+  provider = createProvider(adapterType)
+}

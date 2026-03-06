@@ -1,3 +1,4 @@
+import { Bytes } from 'ox'
 import type { Hex } from 'viem'
 import { Authentication, Registration } from 'webauthx/server'
 
@@ -12,7 +13,9 @@ export type Ceremony = {
     credential: Registration.Credential,
   ) => Promise<verifyRegistration.ReturnType>
   /** Get credential request options for `navigator.credentials.get()`. */
-  getAuthenticationOptions: () => Promise<getAuthenticationOptions.ReturnType>
+  getAuthenticationOptions: (
+    params?: getAuthenticationOptions.Parameters | undefined,
+  ) => Promise<getAuthenticationOptions.ReturnType>
   /** Verify an authentication response and extract the public key. */
   verifyAuthentication: (
     response: Authentication.Response,
@@ -23,6 +26,8 @@ export declare namespace getRegistrationOptions {
   type Parameters = {
     /** Credential display name (e.g. `"alice"`). */
     name: string
+    /** Opaque user identifier. Encoded as `user.id` in the WebAuthn creation options. */
+    userId?: string | undefined
   }
   type ReturnType = { options: Registration.Options }
 }
@@ -32,6 +37,12 @@ export declare namespace verifyRegistration {
 }
 
 export declare namespace getAuthenticationOptions {
+  type Parameters = {
+    /** Challenge to use. */
+    challenge?: `0x${string}` | undefined
+    /** Credential ID to restrict authentication to a specific credential. */
+    credentialId?: string | undefined
+  }
   type ReturnType = { options: Authentication.Options }
 }
 
@@ -64,10 +75,12 @@ export function local(options: local.Options): Ceremony {
   const credentials = new Map<string, Hex>()
 
   return {
-    async getRegistrationOptions({ name }) {
+    async getRegistrationOptions(parameters) {
+      const { name, userId } = parameters
       const { options } = Registration.getOptions({
         name,
         rp: { id: rpId, name: rpId },
+        user: userId ? { id: Bytes.fromString(userId), name } : undefined,
       })
       return { options }
     },
@@ -78,8 +91,13 @@ export function local(options: local.Options): Ceremony {
       return { publicKey }
     },
 
-    async getAuthenticationOptions() {
-      const { options } = Authentication.getOptions({ rpId })
+    async getAuthenticationOptions(parameters = {}) {
+      const { challenge, credentialId } = parameters 
+      const { options } = Authentication.getOptions({
+        challenge,
+        credentialId,
+        rpId,
+      })
       return { options }
     },
 

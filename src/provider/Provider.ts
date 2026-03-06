@@ -124,7 +124,7 @@ export function create(options: create.Options): create.ReturnType {
               return Hex.fromNumber(store.getState().chainId)
 
             case 'eth_requestAccounts': {
-              const newAccounts = await adapter.actions.loadAccounts()
+              const { accounts: newAccounts } = await adapter.actions.loadAccounts()
               mergeAccounts(newAccounts)
               const { accounts, activeAccount } = store.getState()
               if (accounts.length === 0) return []
@@ -282,17 +282,29 @@ export function create(options: create.Options): create.ReturnType {
 
             case 'wallet_connect': {
               const capabilities = request._decoded.params?.[0]?.capabilities
-              const newAccounts =
-                capabilities?.method === 'register'
-                  ? await adapter.actions.createAccount({ name: capabilities.name ?? 'default' })
-                  : await adapter.actions.loadAccounts()
+              const { accounts: newAccounts, signature } = await (async () => {
+                if (capabilities?.method === 'register')
+                  return await adapter.actions.createAccount({
+                    digest: capabilities.digest,
+                    name: capabilities.name ?? 'default',
+                    userId: capabilities.userId,
+                  })
+                return await adapter.actions.loadAccounts({
+                  digest: capabilities?.digest,
+                  credentialId: capabilities?.credentialId,
+                })
+              })()
               mergeAccounts(newAccounts)
               const { accounts: allAccounts, activeAccount } = store.getState()
               const sorted = [...allAccounts]
               const [active] = sorted.splice(activeAccount, 1)
               const ordered = active ? [active, ...sorted] : sorted
+              const signer = newAccounts[0]?.address
               return {
-                accounts: ordered.map((a) => ({ address: a.address, capabilities: {} })),
+                accounts: ordered.map((a) => ({
+                  address: a.address,
+                  capabilities: a.address === signer && signature ? { signature } : {},
+                })),
               }
             }
 

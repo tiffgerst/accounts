@@ -238,12 +238,21 @@ export type wallet_getCapabilities = Schema.DefineItem<typeof wallet_getCapabili
 const connectCapabilities = {
   connect: {
     request: z.optional(
-      z.object({
-        method: z.optional(z.union([z.literal('register'), z.literal('login')])),
-        name: z.optional(z.string()),
-      }),
+      z.union([
+        z.object({
+          digest: z.optional(u.hex()),
+          method: z.literal('register'),
+          name: z.optional(z.string()),
+          userId: z.optional(z.string()),
+        }),
+        z.object({
+          digest: z.optional(u.hex()),
+          credentialId: z.optional(z.string()),
+          method: z.optional(z.literal('login')),
+        }),
+      ]),
     ),
-    result: z.record(z.string(), z.unknown()),
+    result: z.object({ signature: z.optional(u.hex()) }),
   },
 }
 

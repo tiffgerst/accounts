@@ -28,36 +28,22 @@ import { local } from './local.js'
 export function webAuthn(options: webAuthn.Options): Adapter {
   const { ceremony, icon, name, rdns } = options
 
-  /** Performs a registration ceremony and returns a store account. */
-  async function register(name: string): Promise<Store.Account> {
-    const { options } = await ceremony.getRegistrationOptions({ name })
-    const credential = await Registration.create({ options })
-    const { publicKey } = await ceremony.verifyRegistration(credential)
-    const account = Account.fromWebAuthnP256({ id: credential.id, publicKey })
-    return {
-      address: account.address,
-      keyType: 'webAuthn' as const,
-      credential: { id: credential.id, publicKey },
-    }
-  }
-
-  /** Performs an authentication ceremony and returns a store account. */
-  async function authenticate(): Promise<Store.Account> {
-    const { options } = await ceremony.getAuthenticationOptions()
-    const response = await Authentication.sign({ options })
-    const { publicKey } = await ceremony.verifyAuthentication(response)
-    const account = Account.fromWebAuthnP256({ id: response.id, publicKey })
-    return {
-      address: account.address,
-      keyType: 'webAuthn' as const,
-      credential: { id: response.id, publicKey },
-    }
-  }
-
   return {
     ...local({
-      createAccount: async ({ name }) => [await register(name)],
-      loadAccounts: async () => [await authenticate()],
+      async createAccount(params) {
+        const { options } = await ceremony.getRegistrationOptions(params)
+        const credential = await Registration.create({ options })
+        const { publicKey } = await ceremony.verifyRegistration(credential)
+        const account = Account.fromWebAuthnP256({ id: credential.id, publicKey })
+        return { accounts: [{ address: account.address, keyType: 'webAuthn', credential: { id: credential.id, publicKey } }] }
+      },
+      async loadAccounts(params) {
+        const { options } = await ceremony.getAuthenticationOptions(params)
+        const response = await Authentication.sign({ options })
+        const { publicKey } = await ceremony.verifyAuthentication(response)
+        const account = Account.fromWebAuthnP256({ id: response.id, publicKey })
+        return { accounts: [{ address: account.address, keyType: 'webAuthn', credential: { id: response.id, publicKey } }] }
+      },
     }),
     icon,
     name,

@@ -3,12 +3,27 @@ import { parseUnits } from 'viem'
 import { Actions } from 'viem/tempo'
 import { useCallback, useEffect, useSyncExternalStore, useState } from 'react'
 
-import { account, provider } from './provider.js'
+import { type AdapterType, provider, switchAdapter } from './provider.js'
 
 export function App() {
+  const [adapterType, setAdapterType] = useState<AdapterType>('secp256k1')
+  const [, rerender] = useState(0)
+
+  function onSwitch(type: AdapterType) {
+    switchAdapter(type)
+    setAdapterType(type)
+    rerender((n) => n + 1)
+  }
+
   return (
     <div style={{ maxWidth: 640 }}>
       <h1>zyzz playground</h1>
+
+      <h2>Adapter</h2>
+      <select value={adapterType} onChange={(e) => onSwitch(e.target.value as AdapterType)}>
+        <option value="secp256k1">secp256k1</option>
+        <option value="webAuthn">webAuthn</option>
+      </select>
 
       <h2>State</h2>
       <ProviderState />
@@ -51,12 +66,14 @@ function Faucet() {
     <Method method="tempo_fundAddress" result={result} error={error}>
       <button
         onClick={() =>
-          execute(() =>
-            provider.request({
+          execute(async () => {
+            const accounts = await provider.request({ method: 'eth_accounts' })
+            if (accounts.length === 0) return 'No accounts connected'
+            return provider.request({
               method: 'tempo_fundAddress',
-              params: [account.address],
-            } as any),
-          )
+              params: [accounts[0]],
+            } as any)
+          })
         }
       >
         Fund Account
@@ -249,8 +266,8 @@ function Transactions() {
         <colgroup>
           <col style={{ width: '55%' }} />
           <col style={{ width: '25%' }} />
-          <col style={{ width: '15%' }} />
-          <col style={{ width: '5%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '8%' }} />
         </colgroup>
         <thead>
           <tr>
@@ -266,19 +283,18 @@ function Transactions() {
               <td>
                 <input
                   value={row.to}
-                  onChange={(e) => updateRow(i, 'to', e.target.value)}
-                  style={{ width: '100%', fontFamily: 'monospace', fontSize: 12, boxSizing: 'border-box' }}
-                  placeholder="0x..."
+                  onChange={(e) => updateRow(i, 'to', e.target.value as `0x${string}`)}
+                  style={{ width: '100%', fontFamily: 'monospace', boxSizing: 'border-box' }}
                 />
               </td>
               <td>
                 <select
                   value={row.token}
-                  onChange={(e) => updateRow(i, 'token', e.target.value)}
-                  style={{ fontFamily: 'monospace', fontSize: 12 }}
+                  onChange={(e) => updateRow(i, 'token', e.target.value as `0x${string}`)}
+                  style={{ width: '100%' }}
                 >
-                  {Object.entries(tokens).map(([name, address]) => (
-                    <option key={address} value={address}>
+                  {Object.entries(tokens).map(([name, addr]) => (
+                    <option key={addr} value={addr}>
                       {name}
                     </option>
                   ))}
@@ -288,16 +304,11 @@ function Transactions() {
                 <input
                   value={row.amount}
                   onChange={(e) => updateRow(i, 'amount', e.target.value)}
-                  style={{ width: 80, fontVariantNumeric: 'tabular-nums' }}
-                  placeholder="0"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
                 />
               </td>
               <td>
-                {rows.length > 1 && (
-                  <button onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}>
-                    ✕
-                  </button>
-                )}
+                <button onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}>×</button>
               </td>
             </tr>
           ))}
@@ -305,34 +316,47 @@ function Transactions() {
       </table>
       <button onClick={() => setRows((prev) => [...prev, defaultRow(prev.length)])}>+ Add Call</button>
 
-      <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <h3>Send</h3>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button
           onClick={() =>
             send('eth_sendTransaction', () =>
-              provider.request({ method: 'eth_sendTransaction', params: [{ calls }] }),
+              provider.request({
+                method: 'eth_sendTransaction',
+                params: [{ calls }],
+              }),
             )
           }
         >
           eth_sendTransaction
         </button>
+
         <button
           onClick={() =>
             send('eth_sendTransactionSync', () =>
-              provider.request({ method: 'eth_sendTransactionSync', params: [{ calls }] }),
+              provider.request({
+                method: 'eth_sendTransactionSync',
+                params: [{ calls }],
+              }),
             )
           }
         >
           eth_sendTransactionSync
         </button>
+
         <button
           onClick={() =>
             send('wallet_sendCalls', () =>
-              provider.request({ method: 'wallet_sendCalls', params: [{ calls }] }),
+              provider.request({
+                method: 'wallet_sendCalls',
+                params: [{ calls }],
+              }),
             )
           }
         >
           wallet_sendCalls
         </button>
+
         <button
           onClick={() =>
             send('wallet_sendCalls (sync)', () =>

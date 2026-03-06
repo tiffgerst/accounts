@@ -1,8 +1,10 @@
 import { Provider as ox_Provider } from 'ox'
-import { prepareTransactionRequest, sendTransaction, sendTransactionSync } from 'viem/actions'
+import { prepareTransactionRequest, sendTransaction } from 'viem/actions'
 
+import * as Account from '../Account.js'
 import type { Adapter, setup } from '../Adapter.js'
 import type * as Store from '../Store.js'
+import type { Hex } from 'viem'
 
 /**
  * Creates a local adapter where the app manages keys and signing in-process.
@@ -12,10 +14,9 @@ import type * as Store from '../Store.js'
  * import { local } from 'zyzz/provider'
  *
  * const adapter = local({
- *   loadAccounts: async () => [{
- *     address: '0x...',
- *     key: { type: 'secp256k1', privateKey: '0x...' },
- *   }],
+ *   loadAccounts: async () => ({
+ *     accounts: [{ address: '0x...' }],
+ *   }),
  * })
  * ```
  */
@@ -33,26 +34,21 @@ export function local(options: local.Options): Adapter {
       return undefined
     },
     actions: {
-      async createAccount({ name }) {
+      async createAccount(parameters) {
         if (!createAccount)
           throw new ox_Provider.UnsupportedMethodError({
             message: '`createAccount` not configured on adapter.',
           })
-        const accounts = await createAccount({ name })
-        params.store.setState((state) => ({
-          accounts: [...state.accounts, ...accounts],
-          activeAccount: state.accounts.length,
-          status: 'connected',
-        }))
-        return accounts
+        const { accounts, signature } = await createAccount(parameters)
+        if (!parameters?.digest || signature) return { accounts, signature }
+        const account = Account.hydrate(accounts[0]!, { sign: true })
+        return { accounts, signature: await account.sign({ hash: parameters.digest }) }
       },
-      async disconnect() {
-        params.store.setState({ accounts: [], activeAccount: 0, status: 'disconnected' })
-      },
-      async loadAccounts() {
-        const accounts = await loadAccounts()
-        params.store.setState({ accounts: [...accounts], activeAccount: 0, status: 'connected' })
-        return accounts
+      async loadAccounts(parameters) {
+        const { accounts, signature } = await loadAccounts(parameters)
+        if (!parameters?.digest || signature) return { accounts, signature }
+        const account = Account.hydrate(accounts[0]!, { sign: true })
+        return { accounts, signature: await account.sign({ hash: parameters.digest }) }
       },
       async signPersonalMessage({ data, address }) {
         const account = params.getAccount(address, { signable: true })
@@ -92,16 +88,18 @@ export function local(options: local.Options): Adapter {
         const account = params.getAccount(undefined, { signable: true })
         const client = params.getClient()
         const { feePayer: _, ...rest } = parameters
-        return await sendTransactionSync(client, {
+        const prepared = await prepareTransactionRequest(client, {
           account,
           // TODO: support fee payer
           // feePayer,
           ...rest,
           type: 'tempo',
         })
-      },
-      async switchChain({ chainId }) {
-        params.store.setState({ chainId })
+        const signed = await account.signTransaction(prepared as never)
+        return await client.request({
+          method: 'eth_sendRawTransactionSync' as never,
+          params: [signed],
+        } as never)
       },
     },
   }
@@ -110,9 +108,9 @@ export function local(options: local.Options): Adapter {
 export declare namespace local {
   type Options = {
     /** Create a new account. Optional — omit for login-only flows. */
-    createAccount?: ((params: { name: string }) => Promise<readonly Store.Account[]>) | undefined
+    createAccount?: ((params: { digest?: `0x${string}` | undefined; name: string; userId?: string | undefined }) => Promise<{ accounts: readonly Store.Account[]; signature?: `0x${string}` | undefined }>) | undefined
     /** Discover existing accounts (e.g. WebAuthn assertion). */
-    loadAccounts: () => Promise<readonly Store.Account[]>
+    loadAccounts: (params?: { digest?: Hex | undefined; credentialId?: string | undefined } | undefined) => Promise<{ accounts: readonly Store.Account[]; signature?: Hex | undefined }>
     /** Data URI of the provider icon. @default Black 1×1 SVG. */
     icon?: `data:image/${string}` | undefined
     /** Display name of the provider (e.g. `"My Wallet"`). @default "Injected Wallet" */

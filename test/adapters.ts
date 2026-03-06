@@ -20,7 +20,7 @@ function toStoreAccount(index: number): Store.Account {
 
 /** Creates a local adapter pre-configured with deterministic headless WebAuthn test accounts. */
 export function headlessWebAuthn(options: headlessWebAuthn.Options = {}) {
-  const { createAccount, icon, loadAccounts = async () => [toStoreAccount(0)], name, rdns } = options
+  const { createAccount, icon, loadAccounts = async () => ({ accounts: [toStoreAccount(0)] }), name, rdns } = options
   return core_local({
     createAccount,
     icon,
@@ -31,13 +31,7 @@ export function headlessWebAuthn(options: headlessWebAuthn.Options = {}) {
 }
 
 export declare namespace headlessWebAuthn {
-  type Options = {
-    createAccount?: ((params: { name: string }) => Promise<readonly Store.Account[]>) | undefined
-    icon?: `data:image/${string}` | undefined
-    loadAccounts?: (() => Promise<readonly Store.Account[]>) | undefined
-    name?: string | undefined
-    rdns?: string | undefined
-  }
+  type Options = Partial<Pick<core_local.Options, 'loadAccounts'>> & Omit<core_local.Options, 'loadAccounts'>
 }
 
 /** Creates a local adapter backed by real CDP passkeys. */
@@ -65,12 +59,12 @@ export function webAuthn(options: webAuthn.Options = {}) {
   return core_local({
     async loadAccounts() {
       if (!loadedAccount) loadedAccount = await registerAccount('default')
-      return [loadedAccount]
+      return { accounts: [loadedAccount] }
     },
     createAccount: options.withCreate
       ? async ({ name }) => {
           const account = await registerAccount(name)
-          return [account]
+          return { accounts: [account] }
         }
       : undefined,
   })
