@@ -24,6 +24,8 @@ export type Ceremony = {
 
 export declare namespace getRegistrationOptions {
   type Parameters = {
+    /** Credential IDs to exclude (prevents re-registering existing credentials). */
+    excludeCredentialIds?: readonly string[] | undefined
     /** Credential display name (e.g. `"alice"`). */
     name: string
     /** Opaque user identifier. Encoded as `user.id` in the WebAuthn creation options. */
@@ -33,21 +35,37 @@ export declare namespace getRegistrationOptions {
 }
 
 export declare namespace verifyRegistration {
-  type ReturnType = { publicKey: Hex }
+  type ReturnType = {
+    /** The registered credential's ID. */
+    credentialId: string
+    /** The credential's public key (uncompressed P256, hex-encoded). */
+    publicKey: Hex
+  }
 }
 
 export declare namespace getAuthenticationOptions {
   type Parameters = {
+    /** Credential IDs to allow (restricts which credentials can be used). */
+    allowCredentialIds?: readonly string[] | undefined
     /** Challenge to use. */
     challenge?: `0x${string}` | undefined
     /** Credential ID to restrict authentication to a specific credential. */
     credentialId?: string | undefined
+    /** Mediation hint for passkey autofill / conditional UI. */
+    mediation?: 'conditional' | 'optional' | 'required' | 'silent' | undefined
   }
   type ReturnType = { options: Authentication.Options }
 }
 
 export declare namespace verifyAuthentication {
-  type ReturnType = { publicKey: Hex }
+  type ReturnType = {
+    /** The authenticated credential's ID. */
+    credentialId: string
+    /** The credential's public key (uncompressed P256, hex-encoded). */
+    publicKey: Hex
+    /** User identifier from the authenticator's `userHandle` (discoverable/conditional flows). */
+    userId?: string | undefined
+  }
 }
 
 /** Creates a {@link Ceremony} from a custom implementation. */
@@ -76,8 +94,9 @@ export function local(options: local.Options): Ceremony {
 
   return {
     async getRegistrationOptions(parameters) {
-      const { name, userId } = parameters
+      const { excludeCredentialIds, name, userId } = parameters
       const { options } = Registration.getOptions({
+        excludeCredentialIds: excludeCredentialIds as string[] | undefined,
         name,
         rp: { id: rpId, name: rpId },
         user: userId ? { id: Bytes.fromString(userId), name } : undefined,
@@ -88,14 +107,14 @@ export function local(options: local.Options): Ceremony {
     async verifyRegistration(credential) {
       const publicKey = credential.publicKey
       credentials.set(credential.id, publicKey)
-      return { publicKey }
+      return { credentialId: credential.id, publicKey }
     },
 
     async getAuthenticationOptions(parameters = {}) {
-      const { challenge, credentialId } = parameters
+      const { allowCredentialIds, challenge, credentialId } = parameters
       const { options } = Authentication.getOptions({
         challenge,
-        credentialId,
+        credentialId: allowCredentialIds as string[] | undefined ?? credentialId,
         rpId,
       })
       return { options }
@@ -104,7 +123,7 @@ export function local(options: local.Options): Ceremony {
     async verifyAuthentication(response) {
       const publicKey = credentials.get(response.id)
       if (!publicKey) throw new Error(`Unknown credential: ${response.id}`)
-      return { publicKey }
+      return { credentialId: response.id, publicKey }
     },
   }
 }

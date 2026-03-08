@@ -6,9 +6,9 @@ describe('from', () => {
   test('default: returns the ceremony', () => {
     const ceremony = Ceremony.from({
       getRegistrationOptions: async () => ({ options: {} as any }),
-      verifyRegistration: async () => ({ publicKey: '0x1234' }),
+      verifyRegistration: async () => ({ credentialId: 'cred-1', publicKey: '0x1234' }),
       getAuthenticationOptions: async () => ({ options: {} as any }),
-      verifyAuthentication: async () => ({ publicKey: '0x1234' }),
+      verifyAuthentication: async () => ({ credentialId: 'cred-1', publicKey: '0x1234' }),
     })
     expect(ceremony).toBeDefined()
     expect(typeof ceremony.getRegistrationOptions).toMatchInlineSnapshot(`"function"`)
@@ -75,6 +75,7 @@ describe('local', () => {
 
     expect(result).toMatchInlineSnapshot(`
       {
+        "credentialId": "cred-1",
         "publicKey": "0xabcd",
       }
     `)
@@ -119,6 +120,7 @@ describe('local', () => {
 
     expect(result).toMatchInlineSnapshot(`
       {
+        "credentialId": "cred-1",
         "publicKey": "0xabcd",
       }
     `)

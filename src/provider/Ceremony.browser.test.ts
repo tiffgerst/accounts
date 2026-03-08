@@ -15,6 +15,7 @@ describe('registration', () => {
     const result = await ceremony.verifyRegistration(credential)
 
     expect(result.publicKey).toMatch(/^0x[0-9a-f]+$/)
+    expect(result.credentialId).toBeTypeOf('string')
   })
 })
 
@@ -31,6 +32,7 @@ describe('authentication', () => {
     const result = await ceremony.verifyAuthentication(response)
 
     expect(result.publicKey).toMatchInlineSnapshot(`"${publicKey}"`)
+    expect(result.credentialId).toBeTypeOf('string')
   })
 })
 
@@ -45,5 +47,6 @@ describe('round-trip', () => {
     const auth = await ceremony.verifyAuthentication(response)
 
     expect(auth.publicKey).toBe(reg.publicKey)
+    expect(auth.credentialId).toBe(reg.credentialId)
   })
 })
