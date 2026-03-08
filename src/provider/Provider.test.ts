@@ -753,13 +753,16 @@ describe.each(adapters)('$name', ({ adapter }) => {
   })
 
   describe('wallet_getBalances', () => {
-    test('default: returns empty array when no tokens provided', async () => {
+    test('error: throws when no tokens provided', async () => {
       const provider = Provider.create({ adapter: adapter(), chains: [chain] })
 
       await connect(provider)
 
-      const result = await provider.request({ method: 'wallet_getBalances' })
-      expect(result).toMatchInlineSnapshot(`[]`)
+      await expect(
+        provider.request({ method: 'wallet_getBalances' }),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[RpcResponse.InvalidParamsError: \`tokens\` is required.]`,
+      )
     })
 
     test('default: returns token balances with metadata', async () => {

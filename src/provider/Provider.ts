@@ -1,5 +1,5 @@
 import { announceProvider } from 'mipd'
-import { Hash, Hex, Provider as ox_Provider } from 'ox'
+import { Hash, Hex, Provider as ox_Provider, RpcRequest, RpcResponse } from 'ox'
 import type { Chain } from 'viem'
 import { tempo, tempoModerato } from 'viem/chains'
 import { Actions } from 'viem/tempo'
@@ -10,7 +10,7 @@ import * as Client from './Client.js'
 import * as Schema from './Schema.js'
 import * as Storage from './Storage.js'
 import * as Store from './Store.js'
-import * as RpcRequest from './zod/request.js'
+import * as Request from './zod/request.js'
 
 /**
  * Creates an EIP-1193 provider with a pluggable adapter.
@@ -99,9 +99,9 @@ export function create(options: create.Options): create.ReturnType {
           await Store.waitForHydration(store)
 
           // Validate known methods. Unknown methods fall through to the RPC proxy.
-          let request: RpcRequest.WithDecoded<typeof Schema.Request>
+          let request: Request.WithDecoded<typeof Schema.Request>
           try {
-            request = RpcRequest.validate(Schema.Request, { method, params })
+            request = Request.validate(Schema.Request, { method, params })
           } catch (e) {
             if (!(e instanceof ox_Provider.UnsupportedMethodError)) throw e
             // Proxy unknown methods to the RPC node.
@@ -209,7 +209,9 @@ export function create(options: create.Options): create.ReturnType {
               if (!account)
                 throw new ox_Provider.DisconnectedError({ message: 'No accounts connected.' })
               const tokens = decoded?.tokens
-              if (!tokens || tokens.length === 0) return []
+              // TODO: hook up to indexer
+              if (!tokens || tokens.length === 0)
+                throw new RpcResponse.InvalidParamsError({ message: '`tokens` is required.' })
               const client = Client.fromChainId(decoded?.chainId, { chains, store })
               return await Promise.all(
                 tokens.map(async (token) => {
