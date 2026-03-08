@@ -2,6 +2,7 @@ import type { Address } from 'viem'
 import { Account } from 'viem/tempo'
 import { Registration } from 'webauthx/client'
 
+import { dangerous_secp256k1 } from '../src/provider/adapters/dangerous_secp256k1.js'
 import { local as core_local } from '../src/provider/adapters/local.js'
 import * as Ceremony from '../src/provider/Ceremony.js'
 import type * as Store from '../src/provider/Store.js'
@@ -19,19 +20,16 @@ function toStoreAccount(index: number): Store.Account {
 }
 
 /** Creates a local adapter pre-configured with deterministic headless WebAuthn test accounts. */
-export function headlessWebAuthn(options: headlessWebAuthn.Options = {}) {
-  const { createAccount, icon, loadAccounts = async () => ({ accounts: [toStoreAccount(0)] }), name, rdns } = options
+export function headlessWebAuthn() {
   return core_local({
-    createAccount,
-    icon,
-    loadAccounts,
-    name,
-    rdns,
+    loadAccounts: async () => ({ accounts: [toStoreAccount(0)] }),
+    createAccount: async () => ({ accounts: [toStoreAccount(1)] }),
   })
 }
 
-export declare namespace headlessWebAuthn {
-  type Options = Partial<Pick<core_local.Options, 'loadAccounts'>> & Omit<core_local.Options, 'loadAccounts'>
+/** Creates a `dangerous_secp256k1` adapter for testing. */
+export function secp256k1() {
+  return dangerous_secp256k1()
 }
 
 /** Creates a local adapter backed by real CDP passkeys. */

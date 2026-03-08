@@ -194,10 +194,10 @@ export function create(options: create.Options): create.ReturnType {
               return {
                 atomic: true,
                 capabilities: { sync },
-                chainId: store.getState().chainId,
+                chainId,
                 id,
                 receipts: [receipt],
-                status: (receipt as { status: string }).status === 'success' ? 200 : 500,
+                status: (receipt as { status: string }).status === '0x1' ? 200 : 500,
                 version: '2.0.0',
               }
             }
@@ -249,7 +249,7 @@ export function create(options: create.Options): create.ReturnType {
               })
               return {
                 atomic: true,
-                chainId: Number(chainId),
+                chainId,
                 id,
                 receipts: receipt ? [receipt] : [],
                 status: receipt?.status === '0x1' ? 200 : 500,
