@@ -20,18 +20,12 @@ describe('from', () => {
 
 describe('local', () => {
   test('default: creates a ceremony', () => {
-    const ceremony = Ceremony.local({
-      origin: 'https://example.com',
-      rpId: 'example.com',
-    })
+    const ceremony = Ceremony.local({ rpId: 'example.com' })
     expect(ceremony).toBeDefined()
   })
 
   test('behavior: getRegistrationOptions returns serialized options', async () => {
-    const ceremony = Ceremony.local({
-      origin: 'https://example.com',
-      rpId: 'example.com',
-    })
+    const ceremony = Ceremony.local({ rpId: 'example.com' })
 
     const { options } = await ceremony.getRegistrationOptions({ name: 'Test' })
     expect(options.publicKey).toBeDefined()
@@ -42,10 +36,7 @@ describe('local', () => {
   })
 
   test('behavior: getAuthenticationOptions returns serialized options', async () => {
-    const ceremony = Ceremony.local({
-      origin: 'https://example.com',
-      rpId: 'example.com',
-    })
+    const ceremony = Ceremony.local({ rpId: 'example.com' })
 
     const { options } = await ceremony.getAuthenticationOptions()
     expect(options.publicKey).toBeDefined()
@@ -54,10 +45,7 @@ describe('local', () => {
   })
 
   test('behavior: verifyRegistration stores credential and returns publicKey', async () => {
-    const ceremony = Ceremony.local({
-      origin: 'https://example.com',
-      rpId: 'example.com',
-    })
+    const ceremony = Ceremony.local({ rpId: 'example.com' })
 
     const result = await ceremony.verifyRegistration({
       attestationObject: 'mock',
@@ -82,10 +70,7 @@ describe('local', () => {
   })
 
   test('behavior: verifyAuthentication returns stored publicKey', async () => {
-    const ceremony = Ceremony.local({
-      origin: 'https://example.com',
-      rpId: 'example.com',
-    })
+    const ceremony = Ceremony.local({ rpId: 'example.com' })
 
     // Register first to store the credential
     await ceremony.verifyRegistration({
@@ -127,10 +112,7 @@ describe('local', () => {
   })
 
   test('error: verifyAuthentication throws for unknown credential', async () => {
-    const ceremony = Ceremony.local({
-      origin: 'https://example.com',
-      rpId: 'example.com',
-    })
+    const ceremony = Ceremony.local({ rpId: 'example.com' })
 
     await expect(
       ceremony.verifyAuthentication({
@@ -152,10 +134,7 @@ describe('local', () => {
   })
 
   test('behavior: each call to getRegistrationOptions generates a unique challenge', async () => {
-    const ceremony = Ceremony.local({
-      origin: 'https://example.com',
-      rpId: 'example.com',
-    })
+    const ceremony = Ceremony.local({ rpId: 'example.com' })
 
     const { options: a } = await ceremony.getRegistrationOptions({ name: 'Test' })
     const { options: b } = await ceremony.getRegistrationOptions({ name: 'Test' })
@@ -163,10 +142,7 @@ describe('local', () => {
   })
 
   test('behavior: each call to getAuthenticationOptions generates a unique challenge', async () => {
-    const ceremony = Ceremony.local({
-      origin: 'https://example.com',
-      rpId: 'example.com',
-    })
+    const ceremony = Ceremony.local({ rpId: 'example.com' })
 
     const { options: a } = await ceremony.getAuthenticationOptions()
     const { options: b } = await ceremony.getAuthenticationOptions()

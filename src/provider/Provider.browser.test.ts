@@ -268,7 +268,6 @@ describe('wallet_disconnect', () => {
     await connect(provider)
     await provider.request({ method: 'wallet_disconnect' })
 
-    expect(provider.store.getState().status).toMatchInlineSnapshot(`"disconnected"`)
     expect(provider.store.getState().accounts).toMatchInlineSnapshot(`[]`)
   })
 })
@@ -635,7 +634,6 @@ async function fundAccount(address: Address) {
     amount: parseUnits('10', 6),
   })
 }
-
 
 /** Registers a new account and returns its address. */
 async function connect(provider: ReturnType<typeof Provider.create>) {

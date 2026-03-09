@@ -1,6 +1,14 @@
 import { Hex, Provider as core_Provider } from 'ox'
 import { type Address, createClient, custom, http, parseUnits } from 'viem'
-import { verifyHash, verifyMessage, verifyTypedData, waitForTransactionReceipt } from 'viem/actions'
+import {
+  getBalance,
+  sendTransaction,
+  signMessage,
+  verifyHash,
+  verifyMessage,
+  verifyTypedData,
+  waitForTransactionReceipt,
+} from 'viem/actions'
 import { tempo, tempoModerato } from 'viem/chains'
 import { Actions, Addresses } from 'viem/tempo'
 import { describe, expect, test } from 'vitest'
@@ -8,6 +16,7 @@ import { describe, expect, test } from 'vitest'
 import { headlessWebAuthn, secp256k1 } from '../../test/adapters.js'
 import { accounts, chain } from '../../test/config.js'
 import * as Provider from './Provider.js'
+import * as Storage from './Storage.js'
 
 const adapters = [
   { name: 'headlessWebAuthn', adapter: headlessWebAuthn },
@@ -933,6 +942,118 @@ describe.each(adapters)('$name', ({ adapter }) => {
       const provider = Provider.create({ adapter: adapter() })
 
       await expect(provider.request({ method: 'eth_blockNumber' } as any)).rejects.toThrow()
+    })
+  })
+
+  describe('persistence', () => {
+    test('behavior: new provider hydrates accounts from shared storage', async () => {
+      const storage = Storage.memory()
+
+      const provider1 = Provider.create({ adapter: adapter(), storage, storageKey: 'persist-test' })
+      await connect(provider1)
+
+      const accts1 = await provider1.request({ method: 'eth_accounts' })
+      expect(accts1.length).toBeGreaterThanOrEqual(1)
+
+      // Create a second provider with the same storage — it should hydrate.
+      const provider2 = Provider.create({ adapter: adapter(), storage, storageKey: 'persist-test' })
+
+      // Wait for hydration + reconnection.
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      const accts2 = await provider2.request({ method: 'eth_accounts' })
+      expect(accts2.length).toBeGreaterThanOrEqual(1)
+      expect(accts2[0]).toBe(accts1[0])
+    })
+
+    test('behavior: concurrent providers with different storage keys are isolated', async () => {
+      const storage = Storage.memory()
+
+      const providerA = Provider.create({
+        adapter: adapter(),
+        storage,
+        storageKey: 'provider-a',
+      })
+      const providerB = Provider.create({
+        adapter: adapter(),
+        storage,
+        storageKey: 'provider-b',
+      })
+
+      await connect(providerA)
+
+      const acctsA = await providerA.request({ method: 'eth_accounts' })
+      const acctsB = await providerB.request({ method: 'eth_accounts' })
+
+      expect(acctsA.length).toBeGreaterThanOrEqual(1)
+      expect(acctsB).toMatchInlineSnapshot(`[]`)
+    })
+  })
+
+  describe('reconnection', () => {
+    test('behavior: hydrated provider has accounts available', async () => {
+      const storage = Storage.memory()
+
+      const provider1 = Provider.create({ adapter: adapter(), storage, storageKey: 'reconnect' })
+      await connect(provider1)
+
+      const provider2 = Provider.create({ adapter: adapter(), storage, storageKey: 'reconnect' })
+
+      // Wait for hydration.
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      const accts = await provider2.request({ method: 'eth_accounts' })
+      expect(accts.length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  describe('viem compatibility', () => {
+    test('behavior: works with viem custom() transport', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      const address = await connect(provider)
+      await fund(address)
+
+      const client = createClient({ chain, transport: custom(provider) })
+
+      // Read action: getBalance
+      const balance = await getBalance(client, { address })
+      expect(balance).toBeGreaterThanOrEqual(0n)
+    })
+
+    test('behavior: WalletClient can sign messages', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      const address = await connect(provider)
+
+      const client = createClient({
+        account: address,
+        chain,
+        transport: custom(provider),
+      })
+
+      const signature = await signMessage(client, {
+        account: address,
+        message: 'hello',
+      })
+      expect(signature).toMatch(/^0x[0-9a-f]+$/)
+    })
+
+    test('behavior: WalletClient can send transactions', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      const address = await connect(provider)
+      await fund(address)
+
+      const client = createClient({
+        account: address,
+        chain,
+        transport: custom(provider),
+      })
+
+      const hash = await sendTransaction(client, {
+        account: address,
+        to: '0x0000000000000000000000000000000000000001',
+        value: 0n,
+      })
+      expect(hash).toMatch(/^0x[0-9a-f]{64}$/)
     })
   })
 })

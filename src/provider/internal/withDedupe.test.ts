@@ -34,10 +34,7 @@ describe('withDedupe', () => {
       return Promise.resolve(calls)
     }
 
-    const [a, b] = await Promise.all([
-      withDedupe(fn, { id: 'x' }),
-      withDedupe(fn, { id: 'y' }),
-    ])
+    const [a, b] = await Promise.all([withDedupe(fn, { id: 'x' }), withDedupe(fn, { id: 'y' })])
 
     expect(calls).toMatchInlineSnapshot(`2`)
     expect(a).toMatchInlineSnapshot(`1`)
@@ -112,10 +109,7 @@ describe('withDedupe', () => {
       return Promise.resolve('ok')
     }
 
-    await Promise.all([
-      withDedupe(fn, { id: undefined }),
-      withDedupe(fn, { id: undefined }),
-    ])
+    await Promise.all([withDedupe(fn, { id: undefined }), withDedupe(fn, { id: undefined })])
 
     expect(calls).toMatchInlineSnapshot(`2`)
   })

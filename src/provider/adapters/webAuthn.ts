@@ -17,10 +17,7 @@ import { local } from './local.js'
  * ```ts
  * import { Ceremony, webAuthn } from 'zyzz/provider'
  *
- * const ceremony = Ceremony.local({
- *   rpId: 'example.com',
- *   origin: 'https://example.com',
- * })
+ * const ceremony = Ceremony.local()
  *
  * const adapter = webAuthn({ ceremony })
  * ```

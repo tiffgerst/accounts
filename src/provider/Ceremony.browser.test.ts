@@ -7,10 +7,7 @@ import * as Ceremony from './Ceremony.js'
 import * as Provider from './Provider.js'
 
 describe('local', () => {
-  const ceremony = Ceremony.local({
-    origin: 'http://localhost',
-    rpId: 'localhost',
-  })
+  const ceremony = Ceremony.local()
 
   test('default: creates a passkey and verifies registration', async () => {
     const { options } = await ceremony.getRegistrationOptions({ name: 'Test' })

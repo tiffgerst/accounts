@@ -11,7 +11,6 @@ describe('create', () => {
         "accounts": [],
         "activeAccount": 0,
         "chainId": 123,
-        "status": "disconnected",
       }
     `)
   })
@@ -32,7 +31,6 @@ describe('create', () => {
         ],
         "activeAccount": 0,
         "chainId": 123,
-        "status": "disconnected",
       }
     `)
   })
@@ -115,7 +113,6 @@ describe('persistence', () => {
       accounts: [{ address: '0x0000000000000000000000000000000000000001' }],
       activeAccount: 0,
       chainId: 456,
-      status: 'connected',
     })
 
     const store2 = Store.create({ chainId: 123, storage })
@@ -130,7 +127,6 @@ describe('persistence', () => {
         ],
         "activeAccount": 0,
         "chainId": 456,
-        "status": "disconnected",
       }
     `)
   })
@@ -225,7 +221,6 @@ describe('waitForHydration', () => {
         ],
         "activeAccount": 0,
         "chainId": 789,
-        "status": "disconnected",
       }
     `)
   })

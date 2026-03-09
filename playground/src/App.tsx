@@ -93,7 +93,7 @@ function ProviderState() {
     <pre>
       {Json.stringify(
         {
-          status: state.status,
+          connected: state.accounts.length > 0,
           chainId: state.chainId,
           activeAccount: state.activeAccount,
           accounts: state.accounts.map((a) => a.address),

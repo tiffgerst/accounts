@@ -67,11 +67,10 @@ export function create(options: create.Options): create.ReturnType {
     (chainId) => emitter.emit('chainChanged', Hex.fromNumber(chainId)),
   )
   store.subscribe(
-    (state) => state.status,
-    (status) => {
-      if (status === 'connected')
-        emitter.emit('connect', { chainId: Hex.fromNumber(store.getState().chainId) })
-      if (status === 'disconnected') emitter.emit('disconnect', new ox_Provider.DisconnectedError())
+    (state) => state.accounts.length > 0,
+    (connected) => {
+      if (connected) emitter.emit('connect', { chainId: Hex.fromNumber(store.getState().chainId) })
+      else emitter.emit('disconnect', new ox_Provider.DisconnectedError())
     },
   )
 
@@ -88,7 +87,7 @@ export function create(options: create.Options): create.ReturnType {
     const unique = newAccounts.filter((a) => !existingAddresses.has(a.address))
     const accounts = [...existing, ...unique]
     const activeAccount = accounts.findIndex((a) => a.address === newAccounts[0]?.address)
-    store.setState({ accounts, activeAccount, status: 'connected' })
+    store.setState({ accounts, activeAccount })
   }
 
   const provider = Object.assign(
@@ -322,7 +321,7 @@ export function create(options: create.Options): create.ReturnType {
 
                 case 'wallet_disconnect':
                   await adapter.actions.disconnect?.()
-                  store.setState({ accounts: [], activeAccount: 0, status: 'disconnected' })
+                  store.setState({ accounts: [], activeAccount: 0 })
                   return
 
                 case 'wallet_switchEthereumChain': {

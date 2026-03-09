@@ -83,11 +83,11 @@ export function from(ceremony: Ceremony): Ceremony {
  * ```ts
  * import { Ceremony } from 'zyzz/provider'
  *
- * const ceremony = Ceremony.local({ rpId: 'example.com', origin: 'https://example.com' })
+ * const ceremony = Ceremony.local()
  * ```
  */
-export function local(options: local.Options): Ceremony {
-  const { rpId } = options
+export function local(options: local.Options = {}): Ceremony {
+  const rpId = options.rpId ?? (typeof location !== 'undefined' ? location.hostname : 'localhost')
 
   /** In-memory credential store: `credentialId → publicKey (hex)`. */
   const credentials = new Map<string, Hex>()
@@ -130,10 +130,8 @@ export function local(options: local.Options): Ceremony {
 
 export declare namespace local {
   type Options = {
-    /** Expected origin (e.g. `"https://example.com"`). */
-    origin: string
-    /** Relying Party ID (e.g. `"example.com"`). */
-    rpId: string
+    /** Relying Party ID (e.g. `"example.com"`). @default location.hostname */
+    rpId?: string | undefined
   }
 }
 

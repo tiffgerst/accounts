@@ -16,8 +16,6 @@ export type State = {
   activeAccount: number
   /** Active chain ID. */
   chainId: number
-  /** Connection status. */
-  status: 'connected' | 'disconnected' | 'reconnecting'
 }
 
 /** Zustand vanilla store with `subscribeWithSelector` and `persist` middleware. */
@@ -62,7 +60,6 @@ export function create(options: Options): Store {
           accounts: [],
           activeAccount: 0,
           chainId,
-          status: 'disconnected',
         }),
         {
           merge(persisted, current) {
@@ -71,7 +68,6 @@ export function create(options: Options): Store {
               ...current,
               ...state,
               chainId: state.chainId ?? current.chainId,
-              status: current.status,
             }
           },
           name: storageKey,
