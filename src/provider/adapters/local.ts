@@ -39,21 +39,21 @@ export function local(options: local.Options): Adapter {
           })
         const { accounts, signature } = await createAccount(parameters)
         if (!parameters?.digest || signature) return { accounts, signature }
-        const account = Account.hydrate(accounts[0]!, { sign: true })
+        const account = Account.hydrate(accounts[0]!, { signable: true })
         return { accounts, signature: await account.sign({ hash: parameters.digest }) }
       },
       async loadAccounts(parameters) {
         const { accounts, signature } = await loadAccounts(parameters)
         if (!parameters?.digest || signature) return { accounts, signature }
-        const account = Account.hydrate(accounts[0]!, { sign: true })
+        const account = Account.hydrate(accounts[0]!, { signable: true })
         return { accounts, signature: await account.sign({ hash: parameters.digest }) }
       },
       async signPersonalMessage({ data, address }) {
-        const account = params.getAccount(address, { signable: true })
+        const account = params.getAccount({ address, signable: true })
         return await account.signMessage({ message: { raw: data } })
       },
       async signTransaction(parameters) {
-        const account = params.getAccount(undefined, { signable: true })
+        const account = params.getAccount({ signable: true })
         const client = params.getClient()
         const { feePayer: _, ...rest } = parameters
         const prepared = await prepareTransactionRequest(client, {
@@ -66,12 +66,12 @@ export function local(options: local.Options): Adapter {
         return await account.signTransaction(prepared as never)
       },
       async signTypedData({ data, address }) {
-        const account = params.getAccount(address, { signable: true })
+        const account = params.getAccount({ address, signable: true })
         const { domain, types, primaryType, message } = JSON.parse(data)
         return await account.signTypedData({ domain, types, primaryType, message })
       },
       async sendTransaction(parameters) {
-        const account = params.getAccount(undefined, { signable: true })
+        const account = params.getAccount({ signable: true })
         const client = params.getClient()
         const { feePayer: _, ...rest } = parameters
         return await sendTransaction(client, {
@@ -83,7 +83,7 @@ export function local(options: local.Options): Adapter {
         })
       },
       async sendTransactionSync(parameters) {
-        const account = params.getAccount(undefined, { signable: true })
+        const account = params.getAccount({ signable: true })
         const client = params.getClient()
         const { feePayer: _, ...rest } = parameters
         const prepared = await prepareTransactionRequest(client, {

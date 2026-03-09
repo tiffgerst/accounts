@@ -30,9 +30,7 @@ export default defineConfig({
           name: 'browser',
           include: ['./src/**/*.browser.test.ts'],
           env: { VITE_RPC_PORT: '8546' },
-          globalSetup: [
-            join(import.meta.dirname, './test/setup.global.browser.ts'),
-          ],
+          globalSetup: [join(import.meta.dirname, './test/setup.global.browser.ts')],
           setupFiles: [
             join(import.meta.dirname, './test/setup.ts'),
             join(import.meta.dirname, './test/authenticator.setup.ts'),

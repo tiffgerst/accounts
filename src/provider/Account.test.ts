@@ -24,7 +24,7 @@ describe('hydrate', () => {
         keyType: 'secp256k1',
         privateKey: privateKeys[0],
       },
-      { sign: true },
+      { signable: true },
     )
 
     expect(result.address).toMatchInlineSnapshot(`"${accounts[0].address}"`)
@@ -39,7 +39,7 @@ describe('hydrate', () => {
         keyType: 'p256',
         privateKey: privateKeys[0],
       },
-      { sign: true },
+      { signable: true },
     )
 
     expect(result.type).toMatchInlineSnapshot(`"local"`)
@@ -53,7 +53,7 @@ describe('hydrate', () => {
         keyType: 'webCrypto',
         privateKey: privateKeys[0],
       },
-      { sign: true },
+      { signable: true },
     )
 
     expect(result.type).toMatchInlineSnapshot(`"local"`)
@@ -69,7 +69,7 @@ describe('hydrate', () => {
         rpId: 'example.com',
         origin: 'https://example.com',
       },
-      { sign: true },
+      { signable: true },
     )
 
     expect(result.type).toMatchInlineSnapshot(`"local"`)
@@ -78,8 +78,10 @@ describe('hydrate', () => {
 
   test('error: throws when sign is true but no sign data', () => {
     expect(() =>
-      Account.hydrate({ address: accounts[0].address }, { sign: true }),
-    ).toThrowErrorMatchingInlineSnapshot(`[Provider.UnauthorizedError: Account "${accounts[0].address}" cannot sign.]`)
+      Account.hydrate({ address: accounts[0].address }, { signable: true }),
+    ).toThrowErrorMatchingInlineSnapshot(
+      `[Provider.UnauthorizedError: Account "${accounts[0].address}" cannot sign.]`,
+    )
   })
 })
 
@@ -144,7 +146,9 @@ describe('find', () => {
 
     expect(() =>
       Account.find({ address: accounts[0].address, store }),
-    ).toThrowErrorMatchingInlineSnapshot(`[Provider.UnauthorizedError: Account "${accounts[0].address}" not found.]`)
+    ).toThrowErrorMatchingInlineSnapshot(
+      `[Provider.UnauthorizedError: Account "${accounts[0].address}" not found.]`,
+    )
   })
 
   test('error: throws when no active account', () => {

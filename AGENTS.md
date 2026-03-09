@@ -25,6 +25,7 @@
 - **Destructure when accessing multiple properties** — prefer `const { a, b } = options` over repeated `options.a`, `options.b`.
 - **`core_` prefix for import aliases** — when aliasing an import to avoid conflicts, use `core_<name>` (e.g. `import { local as core_local }`), not arbitrary camelCase.
 - **`Hex.fromNumber` over `toString(16)`** — use `Hex.fromNumber(n)` from `ox` instead of `` `0x${n.toString(16)}` `` for number-to-hex conversion.
+- **`Hex.Hex` over `` `0x${string}` ``** — use `Hex.Hex` from `ox` instead of the raw template literal type.
 
 ## Type Inference Conventions
 

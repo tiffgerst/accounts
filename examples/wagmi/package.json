@@ -9,19 +9,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tanstack/react-query": "catalog:default",
-    "react": "catalog:default",
-    "react-dom": "catalog:default",
-    "viem": "catalog:default",
-    "wagmi": "catalog:default",
-    "zyzz": "workspace:*"
+    "@tanstack/react-query": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "viem": "latest",
+    "wagmi": "latest",
+    "zyzz": "latest"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "@types/react": "catalog:default",
-    "@types/react-dom": "catalog:default",
-    "@vitejs/plugin-react": "catalog:default",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
     "typescript": "~5.9.3",
-    "vite": "^7.3.1"
+    "vite": "latest"
   }
 }

@@ -115,7 +115,7 @@ describe('validate', () => {
         params: [{ chainId: 'not-hex' }],
       }),
     ).toThrowErrorMatchingInlineSnapshot(
-      `[ProviderRpcError: Invalid params: params.0.chainId: Invalid input]`,
+      `[ProviderRpcError: Invalid params: params.0.chainId: Expected hex value]`,
     )
   })
 })

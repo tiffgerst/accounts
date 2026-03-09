@@ -491,15 +491,18 @@ export function webauthn(options: webauthn.Options): Handler {
       const body = await req.json()
       const {
         allowCredentialIds,
+        challenge: requestChallenge,
         credentialId,
         mediation: _,
       } = body as {
         allowCredentialIds?: string[]
+        challenge?: Hex.Hex
         credentialId?: string
         mediation?: string
       }
 
       const { challenge, options } = Authentication.getOptions({
+        challenge: requestChallenge,
         credentialId: allowCredentialIds ?? credentialId,
         rpId,
       })

@@ -8,9 +8,8 @@ import * as Provider from './Provider.js'
 import * as Storage from './Storage.js'
 
 describe('local', () => {
-  const ceremony = Ceremony.local()
-
   test('default: creates a passkey and verifies registration', async () => {
+    const ceremony = Ceremony.local()
     const { options } = await ceremony.getRegistrationOptions({ name: 'Test' })
     const credential = await Registration.create({ options })
     const result = await ceremony.verifyRegistration(credential)
@@ -20,11 +19,14 @@ describe('local', () => {
   })
 
   test('behavior: authenticates with an existing passkey', async () => {
+    const ceremony = Ceremony.local()
     const { options: regOptions } = await ceremony.getRegistrationOptions({ name: 'Test' })
     const credential = await Registration.create({ options: regOptions })
     const { publicKey } = await ceremony.verifyRegistration(credential)
 
-    const { options: authOptions } = await ceremony.getAuthenticationOptions()
+    const { options: authOptions } = await ceremony.getAuthenticationOptions({
+      credentialId: credential.id,
+    })
     const response = await Authentication.sign({ options: authOptions })
     const result = await ceremony.verifyAuthentication(response)
 
@@ -33,11 +35,14 @@ describe('local', () => {
   })
 
   test('behavior: register → authenticate → publicKeys match', async () => {
+    const ceremony = Ceremony.local()
     const { options: regOptions } = await ceremony.getRegistrationOptions({ name: 'Round-trip' })
     const credential = await Registration.create({ options: regOptions })
     const reg = await ceremony.verifyRegistration(credential)
 
-    const { options: authOptions } = await ceremony.getAuthenticationOptions()
+    const { options: authOptions } = await ceremony.getAuthenticationOptions({
+      credentialId: reg.credentialId,
+    })
     const response = await Authentication.sign({ options: authOptions })
     const auth = await ceremony.verifyAuthentication(response)
 

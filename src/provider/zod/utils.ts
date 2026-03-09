@@ -5,7 +5,7 @@ import type * as zc from 'zod/v4/core'
 import type { OneOf } from '../../internal/types.js'
 
 /** EVM address (`0x...`). */
-export const address = () => z.templateLiteral(['0x', z.string()])
+export const address = () => z.templateLiteral(['0x', z.string()], 'Expected address')
 
 /** Hex-encoded bigint. Decodes from `0x...` hex to `bigint`. */
 export const bigint = () =>
@@ -15,7 +15,7 @@ export const bigint = () =>
   })
 
 /** Hex-encoded string (`0x...`). */
-export const hex = () => z.templateLiteral(['0x', z.string()])
+export const hex = () => z.templateLiteral(['0x', z.string()], 'Expected hex value')
 
 /** Hex-encoded number. Decodes from `0x...` hex to `number`. */
 export const number = () =>

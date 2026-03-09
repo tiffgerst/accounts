@@ -1,4 +1,5 @@
-import type { Address } from 'viem'
+import { PublicKey, Signature } from 'ox'
+import { SignatureEnvelope } from 'ox/tempo'
 import { Account } from 'viem/tempo'
 import { Authentication, Registration } from 'webauthx/client'
 
@@ -51,12 +52,26 @@ export function webAuthn(options: webAuthn.Options = {}): Adapter {
         : (params?.credentialId ?? (await storage.getItem<string>('lastCredentialId')) ?? undefined)
       const { options } = await ceremony.getAuthenticationOptions({
         ...params,
+        challenge: params?.digest,
         credentialId,
       })
       const response = await Authentication.sign({ options })
       const { publicKey } = await ceremony.verifyAuthentication(response)
       await storage.setItem('lastCredentialId', response.id)
       const account = Account.fromWebAuthnP256({ id: response.id, publicKey })
+
+      const signature = params?.digest
+        ? SignatureEnvelope.serialize(
+            {
+              metadata: response.metadata,
+              publicKey: PublicKey.fromHex(publicKey),
+              signature: Signature.from(response.signature),
+              type: 'webAuthn',
+            },
+            { magic: true },
+          )
+        : undefined
+
       return {
         accounts: [
           {
@@ -65,6 +80,7 @@ export function webAuthn(options: webAuthn.Options = {}): Adapter {
             credential: { id: response.id, publicKey },
           },
         ],
+        signature,
       }
     },
   })

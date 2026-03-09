@@ -16,6 +16,9 @@ catalog:
   viem: ^2.46.2
   wagmi: ^3.4.2
 
+overrides:
+  zyzz: workspace:*
+
 onlyBuiltDependencies:
   - esbuild
   - simple-git-hooks

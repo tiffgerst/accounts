@@ -1,6 +1,6 @@
 import { Provider } from 'ox'
 import type { Hex } from 'viem'
-import type { Address, JsonRpcAccount, LocalAccount } from 'viem/accounts'
+import type { Address, JsonRpcAccount } from 'viem/accounts'
 import { Account as TempoAccount } from 'viem/tempo'
 
 import type { OneOf } from '../internal/types.js'
@@ -29,7 +29,9 @@ export type Store = {
 >
 
 /** Resolves a viem Account from the store by address (or active account). */
-export function find(options: find.Options): LocalAccount {
+export function find(options: find.Options & { signable: true }): TempoAccount.Account
+export function find(options: find.Options): TempoAccount.Account | JsonRpcAccount
+export function find(options: find.Options): TempoAccount.Account | JsonRpcAccount {
   const { address, signable = false, store } = options
   const { accounts, activeAccount } = store.getState()
   const account = address ? accounts.find((a) => a.address === address) : accounts[activeAccount]
@@ -37,7 +39,7 @@ export function find(options: find.Options): LocalAccount {
     throw address
       ? new Provider.UnauthorizedError({ message: `Account "${address}" not found.` })
       : new Provider.DisconnectedError({ message: 'No active account.' })
-  return hydrate(account, { sign: signable }) as never
+  return hydrate(account, { signable }) as never
 }
 
 export declare namespace find {
@@ -51,8 +53,14 @@ export declare namespace find {
   }
 }
 
+/** Overloaded signature for `find` without `store` (pre-bound by the provider). */
+export type Find = {
+  (options: Omit<find.Options, 'store'> & { signable: true }): TempoAccount.Account
+  (options?: Omit<find.Options, 'store'>): TempoAccount.Account | JsonRpcAccount
+}
+
 /** Hydrates a store account to a viem Account. */
-export function hydrate(account: Store, options: { sign: true }): TempoAccount.Account
+export function hydrate(account: Store, options: { signable: true }): TempoAccount.Account
 export function hydrate(
   account: Store,
   options?: hydrate.Options,
@@ -61,8 +69,8 @@ export function hydrate(
   account: Store,
   options: hydrate.Options = {},
 ): TempoAccount.Account | JsonRpcAccount {
-  const { sign = false } = options
-  if (!sign) return { address: account.address, type: 'json-rpc' }
+  const { signable = false } = options
+  if (!signable) return { address: account.address, type: 'json-rpc' }
   if ('sign' in account && typeof account.sign === 'function')
     return account as TempoAccount.Account
   if (!account.keyType)
@@ -89,6 +97,6 @@ export function hydrate(
 export declare namespace hydrate {
   type Options = {
     /** Whether to hydrate signing capability. @default false */
-    sign?: boolean | undefined
+    signable?: boolean | undefined
   }
 }
