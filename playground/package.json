@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "postinstall": "wrangler types",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -15,10 +16,12 @@
     "zyzz": "workspace:*"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.26.1",
     "@types/react": "catalog:default",
     "@types/react-dom": "catalog:default",
     "@vitejs/plugin-react": "catalog:default",
     "typescript": "catalog:default",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "wrangler": "^4.71.0"
   }
 }

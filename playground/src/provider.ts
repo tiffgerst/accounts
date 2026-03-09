@@ -8,10 +8,7 @@ export let provider = createProvider('secp256k1')
 
 export function createProvider(adapterType: AdapterType) {
   if (adapterType === 'webAuthn') {
-    const ceremony = Ceremony.local({
-      origin: window.location.origin,
-      rpId: window.location.hostname,
-    })
+    const ceremony = Ceremony.server({ url: '/webauthn' })
     return Provider.create({
       adapter: webAuthn({ ceremony }),
       testnet: true,

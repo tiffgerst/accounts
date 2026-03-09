@@ -20,7 +20,8 @@ import type { OneOf } from '../internal/types.js'
 import * as RequestListener from './internal/requestListener.js'
 import type { Kv } from './Kv.js'
 
-export type Handler = Router & {
+export type Handler = Omit<Router, 'fetch'> & {
+  fetch: (input: string | URL | Request, ...args: any[]) => Promise<Response>
   listener: (req: any, res: any) => void
 }
 
@@ -424,12 +425,12 @@ export declare namespace feePayer {
  * @returns Request handler.
  */
 export function webauthn(options: webauthn.Options): Handler {
-  const { kv, onAuthenticate, onRegister, origin: origin_, rpId, ...rest } = options
+  const { kv, onAuthenticate, onRegister, origin: origin_, path = '', rpId, ...rest } = options
   const origin = origin_ as string | string[]
 
   const router = from(rest)
 
-  router.post('/register/options', async ({ request: req }) => {
+  router.post(`${path}/register/options`, async ({ request: req }) => {
     try {
       const body = await req.json()
       const { excludeCredentialIds, name, userId } = body as {
@@ -453,7 +454,7 @@ export function webauthn(options: webauthn.Options): Handler {
     }
   })
 
-  router.post('/register', async ({ request: req }) => {
+  router.post(`${path}/register`, async ({ request: req }) => {
     try {
       const credential = (await req.json()) as Registration_Types.Credential
       const deserialized = Credential.deserialize(credential)
@@ -485,7 +486,7 @@ export function webauthn(options: webauthn.Options): Handler {
     }
   })
 
-  router.post('/login/options', async ({ request: req }) => {
+  router.post(`${path}/login/options`, async ({ request: req }) => {
     try {
       const body = await req.json()
       const {
@@ -511,7 +512,7 @@ export function webauthn(options: webauthn.Options): Handler {
     }
   })
 
-  router.post('/login', async ({ request: req }) => {
+  router.post(`${path}/login`, async ({ request: req }) => {
     try {
       const response = (await req.json()) as Authentication.Response
 
@@ -570,6 +571,8 @@ export declare namespace webauthn {
     }) => Response | Promise<Response> | void | Promise<void>
     /** Expected origin(s) (e.g. `"https://example.com"` or `["https://a.com", "https://b.com"]`). */
     origin: string | readonly string[]
+    /** Path prefix for the WebAuthn endpoints (e.g. `"/webauthn"`). @default "" */
+    path?: string | undefined
     /** Relying Party ID (e.g. `"example.com"`). */
     rpId: string
   }

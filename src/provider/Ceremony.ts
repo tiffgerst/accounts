@@ -153,43 +153,34 @@ export declare namespace local {
 export function server(options: server.Options): Ceremony {
   const { url } = options
 
+  async function request(path: string, body: unknown) {
+    const response = await fetch(`${url}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const json = await response.json()
+    if (!response.ok) throw new Error((json as { error?: string }).error ?? 'Request failed')
+    return json
+  }
+
   return {
     async getRegistrationOptions(parameters) {
       const { excludeCredentialIds, name, userId } = parameters
-      const response = await fetch(`${url}/register/options`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ excludeCredentialIds, name, userId }),
-      })
-      return response.json()
+      return request('/register/options', { excludeCredentialIds, name, userId })
     },
 
     async verifyRegistration(credential) {
-      const response = await fetch(`${url}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credential),
-      })
-      return response.json()
+      return request('/register', credential)
     },
 
     async getAuthenticationOptions(parameters = {}) {
       const { allowCredentialIds, challenge, credentialId, mediation } = parameters
-      const response = await fetch(`${url}/login/options`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ allowCredentialIds, challenge, credentialId, mediation }),
-      })
-      return response.json()
+      return request('/login/options', { allowCredentialIds, challenge, credentialId, mediation })
     },
 
     async verifyAuthentication(response) {
-      const res = await fetch(`${url}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(response),
-      })
-      return res.json()
+      return request('/login', response)
     },
   }
 }

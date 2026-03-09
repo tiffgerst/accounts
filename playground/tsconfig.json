@@ -7,9 +7,10 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "types": ["vite/client"],
     "paths": {
       "zyzz/*": ["../src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "worker", "worker-configuration.d.ts"]
 }
