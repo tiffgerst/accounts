@@ -5,6 +5,7 @@ import { hooksUrl, url as webauthnUrl } from '../../test/webauthn.constants.js'
 import { webAuthn } from './adapters/webAuthn.js'
 import * as Ceremony from './Ceremony.js'
 import * as Provider from './Provider.js'
+import * as Storage from './Storage.js'
 
 describe('local', () => {
   const ceremony = Ceremony.local()
@@ -123,10 +124,15 @@ describe('server', () => {
 describe('server (provider round-trip)', () => {
   const ceremony = Ceremony.server({ url: webauthnUrl })
 
-  test('behavior: wallet_connect register → eth_accounts returns address', async () => {
-    const provider = Provider.create({
+  function createProvider() {
+    return Provider.create({
+      storage: Storage.idb({ key: crypto.randomUUID() }),
       adapter: webAuthn({ ceremony }),
     })
+  }
+
+  test('behavior: wallet_connect register → eth_accounts returns address', async () => {
+    const provider = createProvider()
 
     const result = await provider.request({
       method: 'wallet_connect',
@@ -142,9 +148,7 @@ describe('server (provider round-trip)', () => {
   })
 
   test('behavior: register two accounts → eth_accounts returns both', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = createProvider()
 
     // Register first
     const first = await provider.request({

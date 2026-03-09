@@ -10,8 +10,17 @@ import { url as webauthnUrl } from '../../test/webauthn.constants.js'
 import { webAuthn } from './adapters/webAuthn.js'
 import * as Ceremony from './Ceremony.js'
 import * as Provider from './Provider.js'
+import * as Storage from './Storage.js'
 
 const ceremony = Ceremony.server({ url: webauthnUrl })
+
+function getProvider(options: Partial<Provider.create.Options> = {}) {
+  return Provider.create({
+    storage: Storage.idb({ key: crypto.randomUUID() }),
+    adapter: webAuthn({ ceremony }),
+    ...options,
+  })
+}
 
 const transferCall = Actions.token.transfer.call({
   to: '0x0000000000000000000000000000000000000001',
@@ -21,9 +30,7 @@ const transferCall = Actions.token.transfer.call({
 
 describe('create', () => {
   test('default: returns an EIP-1193 provider', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = getProvider()
     expect(provider).toBeDefined()
     expect(typeof provider.request).toMatchInlineSnapshot(`"function"`)
   })
@@ -31,9 +38,7 @@ describe('create', () => {
 
 describe('eth_chainId', () => {
   test('default: returns configured chain ID as hex', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = getProvider()
 
     const chainId = await provider.request({ method: 'eth_chainId' })
     expect(chainId).toMatchInlineSnapshot(`"0x1079"`)
@@ -42,9 +47,7 @@ describe('eth_chainId', () => {
 
 describe('eth_requestAccounts', () => {
   test('default: returns accounts after registering', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = getProvider()
 
     await provider.request({
       method: 'wallet_connect',
@@ -59,9 +62,7 @@ describe('eth_requestAccounts', () => {
 
 describe('wallet_connect', () => {
   test('default: register returns ERC-7846 response', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = getProvider()
 
     const result = await provider.request({
       method: 'wallet_connect',
@@ -73,9 +74,7 @@ describe('wallet_connect', () => {
   })
 
   test('behavior: register preserves existing accounts', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = getProvider()
 
     await provider.request({
       method: 'wallet_connect',
@@ -92,10 +91,7 @@ describe('wallet_connect', () => {
   })
 
   test('behavior: login with digest returns signature in capabilities', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     // Register first to create a credential
     await provider.request({
@@ -112,10 +108,7 @@ describe('wallet_connect', () => {
   })
 
   test('behavior: digest signature is verifiable on-chain', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     // Register and fund
     const regResult = await provider.request({
@@ -143,9 +136,7 @@ describe('wallet_connect', () => {
   })
 
   test('behavior: login without digest returns empty capabilities', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = getProvider()
 
     // Register first so a credential exists for login
     await provider.request({
@@ -159,9 +150,7 @@ describe('wallet_connect', () => {
   })
 
   test('behavior: register without digest returns empty capabilities', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = getProvider()
 
     const result = await provider.request({
       method: 'wallet_connect',
@@ -171,10 +160,7 @@ describe('wallet_connect', () => {
   })
 
   test('behavior: register with digest returns signature in capabilities', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const result = await provider.request({
       method: 'wallet_connect',
@@ -184,10 +170,7 @@ describe('wallet_connect', () => {
   })
 
   test('behavior: register digest signature is verifiable on-chain', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const digest = '0xdeadbeef' as const
     const result = await provider.request({
@@ -205,10 +188,7 @@ describe('wallet_connect', () => {
   })
 
   test('behavior: signature only on signer account, not others', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     // Register first, then login with digest
     await provider.request({
@@ -238,9 +218,7 @@ describe('wallet_connect', () => {
   })
 
   test('behavior: login deduplicates and sets active account', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = getProvider()
 
     // Register then login with same loadAccounts
     await provider.request({
@@ -261,9 +239,7 @@ describe('wallet_connect', () => {
 
 describe('wallet_disconnect', () => {
   test('default: clears state', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = getProvider()
 
     await connect(provider)
     await provider.request({ method: 'wallet_disconnect' })
@@ -274,9 +250,7 @@ describe('wallet_disconnect', () => {
 
 describe('events', () => {
   test('behavior: does not emit accountsChanged on duplicate login', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-    })
+    const provider = getProvider()
 
     await connect(provider)
 
@@ -291,10 +265,7 @@ describe('events', () => {
 
 describe('eth_sendTransaction', () => {
   test('default: sends transaction and returns hash', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
     await fundAccount(address)
@@ -310,10 +281,7 @@ describe('eth_sendTransaction', () => {
 
 describe('eth_sendTransactionSync', () => {
   test('default: sends transaction and returns receipt', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
     await fundAccount(address)
@@ -354,7 +322,7 @@ describe('eth_sendTransactionSync', () => {
       {
         "contractAddress": null,
         "feeToken": "0x20c0000000000000000000000000000000000000",
-        "status": "success",
+        "status": "0x1",
         "type": "0x76",
       }
     `)
@@ -363,10 +331,7 @@ describe('eth_sendTransactionSync', () => {
 
 describe('eth_signTransaction', () => {
   test('default: signs transaction and returns serialized', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
     await fundAccount(address)
@@ -380,10 +345,7 @@ describe('eth_signTransaction', () => {
   })
 
   test('behavior: signed transaction can be sent via eth_sendRawTransactionSync', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
     await fundAccount(address)
@@ -405,10 +367,7 @@ describe('eth_signTransaction', () => {
 
 describe('wallet_sendCalls', () => {
   test('default: sends calls and returns id', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
     await fundAccount(address)
@@ -426,10 +385,7 @@ describe('wallet_sendCalls', () => {
   })
 
   test('behavior: with sync capability returns id and sync capability', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
     await fundAccount(address)
@@ -453,10 +409,7 @@ describe('wallet_sendCalls', () => {
   })
 
   test('behavior: sync false uses async path', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
     await fundAccount(address)
@@ -482,10 +435,7 @@ describe('wallet_sendCalls', () => {
 
 describe('personal_sign', () => {
   test('default: signs a message and returns signature', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
 
@@ -499,10 +449,7 @@ describe('personal_sign', () => {
   })
 
   test('behavior: signature is verifiable on-chain', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
     await fundAccount(address)
@@ -537,10 +484,7 @@ describe('eth_signTypedData_v4', () => {
   }
 
   test('default: signs typed data and returns signature', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
 
@@ -553,10 +497,7 @@ describe('eth_signTypedData_v4', () => {
   })
 
   test('behavior: signature is verifiable on-chain', async () => {
-    const provider = Provider.create({
-      adapter: webAuthn({ ceremony }),
-      chains: [chain],
-    })
+    const provider = getProvider({ chains: [chain] })
 
     const address = await connect(provider)
     await fundAccount(address)
@@ -581,7 +522,7 @@ describe('eip-6963', () => {
     const discovered: { info: { icon: string; name: string; rdns: string; uuid: string } }[] = []
     const unsubscribe = requestProviders((detail) => discovered.push(detail as never))
 
-    Provider.create({
+    getProvider({
       adapter: webAuthn({
         ceremony,
         icon: 'data:image/svg+xml,<svg></svg>',
@@ -593,11 +534,11 @@ describe('eip-6963', () => {
     // Wait a tick for the event to fire
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(discovered.length).toMatchInlineSnapshot(`1`)
-    expect(discovered[0]!.info.name).toMatchInlineSnapshot(`"Test Wallet"`)
-    expect(discovered[0]!.info.rdns).toMatchInlineSnapshot(`"com.example.test"`)
-    expect(discovered[0]!.info.icon).toMatchInlineSnapshot(`"data:image/svg+xml,<svg></svg>"`)
-    expect(discovered[0]!.info.uuid).toMatch(
+    const match = discovered.find((d) => d.info.rdns === 'com.example.test')!
+    expect(match.info.name).toMatchInlineSnapshot(`"Test Wallet"`)
+    expect(match.info.rdns).toMatchInlineSnapshot(`"com.example.test"`)
+    expect(match.info.icon).toMatchInlineSnapshot(`"data:image/svg+xml,<svg></svg>"`)
+    expect(match.info.uuid).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     )
 
@@ -608,7 +549,7 @@ describe('eip-6963', () => {
     const discovered: { info: { icon: string; name: string; rdns: string } }[] = []
     const unsubscribe = requestProviders((detail) => discovered.push(detail as never))
 
-    Provider.create({
+    getProvider({
       adapter: webAuthn({ ceremony, name: 'My Wallet' }),
     })
 
@@ -636,7 +577,7 @@ async function fundAccount(address: Address) {
 }
 
 /** Registers a new account and returns its address. */
-async function connect(provider: ReturnType<typeof Provider.create>) {
+async function connect(provider: ReturnType<typeof getProvider>) {
   const result = await provider.request({
     method: 'wallet_connect',
     params: [{ capabilities: { method: 'register' } }],
