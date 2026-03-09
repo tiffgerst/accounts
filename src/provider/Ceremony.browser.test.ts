@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest'
 import { Registration, Authentication } from 'webauthx/client'
 
+import { webAuthn } from './adapters/webAuthn.js'
 import * as Ceremony from './Ceremony.js'
+import * as Provider from './Provider.js'
 
 describe('local', () => {
   const ceremony = Ceremony.local({
@@ -118,6 +120,53 @@ describe('server', () => {
     const resB = await Authentication.sign({ options: authB })
     const authResultB = await ceremony.verifyAuthentication(resB)
     expect(authResultB.publicKey).toBe(b.publicKey)
+  })
+})
+
+describe('server (provider round-trip)', () => {
+  const url = 'http://localhost:44320'
+  const ceremony = Ceremony.server({ url })
+
+  test('behavior: wallet_connect register → eth_accounts returns address', async () => {
+    const provider = Provider.create({
+      adapter: webAuthn({ ceremony }),
+    })
+
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+
+    expect(result.accounts).toHaveLength(1)
+    expect(result.accounts[0]!.address).toMatch(/^0x[0-9a-fA-F]{40}$/)
+
+    const accounts = await provider.request({ method: 'eth_accounts' })
+    expect(accounts).toHaveLength(1)
+    expect(accounts[0]).toBe(result.accounts[0]!.address)
+  })
+
+  test('behavior: register two accounts → eth_accounts returns both', async () => {
+    const provider = Provider.create({
+      adapter: webAuthn({ ceremony }),
+    })
+
+    // Register first
+    const first = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+
+    // Register second
+    const second = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+
+    expect(second.accounts).toHaveLength(2)
+    expect(second.accounts[0]!.address).not.toBe(first.accounts[0]!.address)
+
+    const accounts = await provider.request({ method: 'eth_accounts' })
+    expect(accounts).toHaveLength(2)
   })
 })
 
