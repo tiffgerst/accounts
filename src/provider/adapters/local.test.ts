@@ -1,8 +1,12 @@
-import { createClient, http } from 'viem'
 import { tempoLocalnet } from 'viem/chains'
 import { describe, expect, test } from 'vitest'
 
-import { accounts as core_accounts, privateKeys, webAuthnAccounts } from '../../../test/config.js'
+import {
+  accounts as core_accounts,
+  getClient,
+  privateKeys,
+  webAuthnAccounts,
+} from '../../../test/config.js'
 import * as Account from '../Account.js'
 import * as Storage from '../Storage.js'
 import * as Store from '../Store.js'
@@ -76,8 +80,8 @@ function setup(overrides: Partial<local.Options> = {}) {
   const storage = Storage.memory()
   const store = Store.create({ chainId: tempoLocalnet.id, storage })
   adapter.setup?.({
-    getAccount: (address) => Account.find({ address, signable: true, store }),
-    getClient: () => createClient({ chain: tempoLocalnet, transport: http() }) as never,
+    getAccount: (options) => Account.find({ ...options, signable: true, store }),
+    getClient: () => getClient({ chain: tempoLocalnet }) as never,
     storage,
     store,
   })

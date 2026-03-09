@@ -1,6 +1,7 @@
 import { Hex, Json } from 'ox'
 import { useCallback, useEffect, useSyncExternalStore, useState } from 'react'
 import { parseUnits } from 'viem'
+import { verifyMessage, verifyTypedData } from 'viem/actions'
 import { Actions } from 'viem/tempo'
 
 import { type AdapterType, provider, switchAdapter } from './provider.js'
@@ -48,6 +49,12 @@ export function App() {
       <h2>Transactions</h2>
       <Transactions />
 
+      <h2>Signing</h2>
+      <PersonalSign />
+      <VerifyMessage />
+      <EthSignTypedData />
+      <VerifyTypedData />
+
       <h2>Receipts</h2>
       <EthGetTransactionReceipt />
       <WalletGetCallsStatus />
@@ -60,8 +67,6 @@ export function App() {
     </div>
   )
 }
-
-// -- Faucet --
 
 function Faucet() {
   const [result, error, execute] = useRequest()
@@ -85,8 +90,6 @@ function Faucet() {
   )
 }
 
-// -- State --
-
 function ProviderState() {
   const state = useSyncExternalStore(
     (cb) => provider.store.subscribe(cb),
@@ -108,27 +111,55 @@ function ProviderState() {
   )
 }
 
-// -- Connection --
-
 function WalletConnect() {
   const [result, error, execute] = useRequest()
+
+  function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    const name = form.get('name') as string
+    const digest = form.get('digest') as Hex.Hex
+    const method = (e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')
+
+    const capabilities =
+      method === 'register'
+        ? ({
+            method: 'register',
+            ...(name ? { name } : {}),
+            ...(digest ? { digest } : {}),
+          } as const)
+        : ((digest ? { digest } : {}) as const)
+
+    execute(() =>
+      provider.request({
+        method: 'wallet_connect',
+        params: [{ capabilities }],
+      }),
+    )
+  }
+
   return (
     <Method method="wallet_connect" result={result} error={error}>
-      <button onClick={() => execute(() => provider.request({ method: 'wallet_connect' }))}>
-        Login
-      </button>
-      <button
-        onClick={() =>
-          execute(() =>
-            provider.request({
-              method: 'wallet_connect',
-              params: [{ capabilities: { method: 'register' } }],
-            }),
-          )
-        }
-      >
-        Register
-      </button>
+      <form onSubmit={submit}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <label>Name</label>
+          <input name="name" placeholder="Account name (optional)" style={{ flex: 1 }} />
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <label>Digest</label>
+          <input
+            name="digest"
+            placeholder="0x... (optional)"
+            style={{ flex: 1, fontFamily: 'monospace' }}
+          />
+        </div>
+        <button type="submit" value="login">
+          Login
+        </button>
+        <button type="submit" value="register">
+          Register
+        </button>
+      </form>
     </Method>
   )
 }
@@ -161,8 +192,6 @@ function WalletDisconnect() {
     </Method>
   )
 }
-
-// -- Accounts & Chain --
 
 function EthAccounts() {
   const [result, error, execute] = useRequest()
@@ -209,8 +238,6 @@ function WalletSwitchChain() {
     </Method>
   )
 }
-
-// -- Transactions --
 
 const tokens = {
   pathUSD: '0x20c0000000000000000000000000000000000000',
@@ -383,69 +410,242 @@ function Transactions() {
   )
 }
 
-// -- Receipts --
+function PersonalSign() {
+  const [result, error, execute] = useRequest()
+  return (
+    <Method method="personal_sign" result={result} error={error}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          const message = new FormData(e.currentTarget).get('message') as string
+          if (!message) return
+          execute(async () => {
+            const accounts = await provider.request({ method: 'eth_accounts' })
+            if (accounts.length === 0) return 'No accounts connected'
+            return provider.request({
+              method: 'personal_sign',
+              params: [Hex.fromString(message), accounts[0]],
+            })
+          })
+        }}
+        style={{ display: 'flex', gap: 8, alignItems: 'center' }}
+      >
+        <input
+          name="message"
+          defaultValue="hello world"
+          placeholder="Message"
+          style={{ flex: 1 }}
+        />
+        <button type="submit">Sign</button>
+      </form>
+    </Method>
+  )
+}
+
+function EthSignTypedData() {
+  const [result, error, execute] = useRequest()
+  return (
+    <Method method="eth_signTypedData_v4" result={result} error={error}>
+      <button
+        onClick={() =>
+          execute(async () => {
+            const accounts = await provider.request({ method: 'eth_accounts' })
+            if (accounts.length === 0) return 'No accounts connected'
+            return provider.request({
+              method: 'eth_signTypedData_v4',
+              params: [
+                accounts[0],
+                Json.stringify({
+                  types: {
+                    EIP712Domain: [
+                      { name: 'name', type: 'string' },
+                      { name: 'version', type: 'string' },
+                      { name: 'chainId', type: 'uint256' },
+                    ],
+                    Person: [
+                      { name: 'name', type: 'string' },
+                      { name: 'wallet', type: 'address' },
+                    ],
+                    Mail: [
+                      { name: 'from', type: 'Person' },
+                      { name: 'to', type: 'Person' },
+                      { name: 'contents', type: 'string' },
+                    ],
+                  },
+                  primaryType: 'Mail',
+                  domain: { name: 'Example', version: '1', chainId: '1' },
+                  message: {
+                    from: { name: 'Alice', wallet: '0x0000000000000000000000000000000000000001' },
+                    to: { name: 'Bob', wallet: '0x0000000000000000000000000000000000000002' },
+                    contents: 'Hello, Bob!',
+                  },
+                }),
+              ],
+            } as any)
+          })
+        }
+      >
+        Sign
+      </button>
+    </Method>
+  )
+}
+
+function VerifyMessage() {
+  const [result, error, execute] = useRequest()
+  return (
+    <Method method="personal_sign (verify)" result={result} error={error}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          const form = new FormData(e.currentTarget)
+          const message = form.get('message') as string
+          const signature = form.get('signature') as `0x${string}`
+          if (!message || !signature) return
+          execute(async () => {
+            const accounts = await provider.request({ method: 'eth_accounts' })
+            if (accounts.length === 0) return 'No accounts connected'
+            const client = provider.getClient()
+            return verifyMessage(client, {
+              address: accounts[0],
+              message,
+              signature,
+            })
+          })
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <label>Message</label>
+          <input
+            name="message"
+            defaultValue="hello world"
+            placeholder="Message"
+            style={{ flex: 1 }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <label>Signature</label>
+          <input
+            name="signature"
+            placeholder="0x..."
+            style={{ flex: 1, fontFamily: 'monospace' }}
+          />
+        </div>
+        <button type="submit">Verify</button>
+      </form>
+    </Method>
+  )
+}
+
+function VerifyTypedData() {
+  const [result, error, execute] = useRequest()
+  return (
+    <Method method="eth_signTypedData_v4 (verify)" result={result} error={error}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          const signature = new FormData(e.currentTarget).get('signature') as `0x${string}`
+          if (!signature) return
+          execute(async () => {
+            const accounts = await provider.request({ method: 'eth_accounts' })
+            if (accounts.length === 0) return 'No accounts connected'
+            const client = provider.getClient()
+            return verifyTypedData(client, {
+              address: accounts[0],
+              types: {
+                Person: [
+                  { name: 'name', type: 'string' },
+                  { name: 'wallet', type: 'address' },
+                ],
+                Mail: [
+                  { name: 'from', type: 'Person' },
+                  { name: 'to', type: 'Person' },
+                  { name: 'contents', type: 'string' },
+                ],
+              },
+              primaryType: 'Mail',
+              domain: { name: 'Example', version: '1', chainId: 1n },
+              message: {
+                from: { name: 'Alice', wallet: '0x0000000000000000000000000000000000000001' },
+                to: { name: 'Bob', wallet: '0x0000000000000000000000000000000000000002' },
+                contents: 'Hello, Bob!',
+              },
+              signature,
+            })
+          })
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <label>Signature</label>
+          <input
+            name="signature"
+            placeholder="0x..."
+            style={{ flex: 1, fontFamily: 'monospace' }}
+          />
+        </div>
+        <button type="submit">Verify</button>
+      </form>
+    </Method>
+  )
+}
 
 function EthGetTransactionReceipt() {
-  const [hash, setHash] = useState('')
   const [result, error, execute] = useRequest()
   return (
     <Method method="eth_getTransactionReceipt" result={result} error={error}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          const hash = new FormData(e.currentTarget).get('hash') as string
+          if (!hash) return
+          execute(() =>
+            provider.request({
+              method: 'eth_getTransactionReceipt',
+              params: [hash as `0x${string}`],
+            }),
+          )
+        }}
+        style={{ display: 'flex', gap: 8, alignItems: 'center' }}
+      >
         <input
-          value={hash}
-          onChange={(e) => setHash(e.target.value)}
+          name="hash"
           placeholder="Enter tx hash (0x...)"
           style={{ flex: 1, fontFamily: 'monospace' }}
         />
-        <button
-          disabled={!hash}
-          onClick={() =>
-            execute(() =>
-              provider.request({
-                method: 'eth_getTransactionReceipt',
-                params: [hash as `0x${string}`],
-              }),
-            )
-          }
-        >
-          Get Receipt
-        </button>
-      </div>
+        <button type="submit">Get Receipt</button>
+      </form>
     </Method>
   )
 }
 
 function WalletGetCallsStatus() {
-  const [id, setId] = useState('')
   const [result, error, execute] = useRequest()
   return (
     <Method method="wallet_getCallsStatus" result={result} error={error}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          const id = new FormData(e.currentTarget).get('id') as string
+          if (!id) return
+          execute(() =>
+            provider.request({
+              method: 'wallet_getCallsStatus',
+              params: [id],
+            }),
+          )
+        }}
+        style={{ display: 'flex', gap: 8, alignItems: 'center' }}
+      >
         <input
-          value={id}
-          onChange={(e) => setId(e.target.value)}
+          name="id"
           placeholder="Enter calls ID (0x...)"
           style={{ flex: 1, fontFamily: 'monospace' }}
         />
-        <button
-          disabled={!id}
-          onClick={() =>
-            execute(() =>
-              provider.request({
-                method: 'wallet_getCallsStatus',
-                params: [id],
-              }),
-            )
-          }
-        >
-          Get Status
-        </button>
-      </div>
+        <button type="submit">Get Status</button>
+      </form>
     </Method>
   )
 }
-
-// -- Balances --
 
 type TokenBalance = {
   address: string
@@ -508,22 +708,16 @@ function WalletGetBalances() {
   )
 }
 
-// -- Payments (mppx) --
-
 function Fortune() {
   const [result, error, execute] = useRequest()
   return (
     <Method method="fetch /fortune" result={result} error={error}>
-      <button
-        onClick={() => execute(() => fetch('/fortune').then((r) => r.json()))}
-      >
+      <button onClick={() => execute(() => fetch('/fortune').then((r) => r.json()))}>
         Get Fortune (0.01 pathUSD)
       </button>
     </Method>
   )
 }
-
-// -- RPC Proxy --
 
 function EthBlockNumber() {
   const [result, error, execute] = useRequest()
@@ -535,8 +729,6 @@ function EthBlockNumber() {
     </Method>
   )
 }
-
-// -- Events --
 
 type Event = { name: string; data: unknown; time: string }
 
@@ -596,8 +788,6 @@ function Events() {
   )
 }
 
-// -- Hooks --
-
 function useRequest() {
   const [result, setResult] = useState<unknown>()
   const [error, setError] = useState<Error>()
@@ -612,8 +802,6 @@ function useRequest() {
   }, [])
   return [result, error, execute] as const
 }
-
-// -- Shared UI --
 
 function Method({
   method,

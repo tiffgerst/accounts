@@ -1,5 +1,5 @@
 import { Hex, Provider as core_Provider } from 'ox'
-import { type Address, createClient, custom, http, parseUnits } from 'viem'
+import { type Address, createClient, custom, parseUnits } from 'viem'
 import {
   getBalance,
   sendTransaction,
@@ -14,7 +14,7 @@ import { Actions, Addresses } from 'viem/tempo'
 import { describe, expect, test } from 'vitest'
 
 import { headlessWebAuthn, secp256k1 } from '../../test/adapters.js'
-import { accounts, chain } from '../../test/config.js'
+import { accounts, chain, getClient } from '../../test/config.js'
 import * as Provider from './Provider.js'
 import * as Storage from './Storage.js'
 
@@ -43,7 +43,7 @@ describe.each(adapters)('$name', ({ adapter }) => {
 
   /** Funds an address with PathUSD from the pre-funded test account. */
   async function fund(address: Address) {
-    const client = createClient({ chain, transport: http() })
+    const client = getClient()
     await Actions.token.transferSync(client, {
       account: accounts[0]!,
       feeToken: Addresses.pathUsd,
@@ -197,10 +197,10 @@ describe.each(adapters)('$name', ({ adapter }) => {
 
     test('behavior: digest signature is verifiable on-chain', async () => {
       const provider = Provider.create({ adapter: adapter(), chains: [chain] })
-      const client = createClient({ chain, transport: custom(provider) })
+      const client = provider.getClient()
 
       await connect(provider)
-      const digest = '0xdeadbeef' as const
+      const digest = '0x00000000000000000000000000000000000000000000000000000000deadbeef' as const
       const result = await provider.request({
         method: 'wallet_connect',
         params: [{ capabilities: { digest } }],
@@ -243,9 +243,9 @@ describe.each(adapters)('$name', ({ adapter }) => {
 
     test('behavior: register digest signature is verifiable on-chain', async () => {
       const provider = Provider.create({ adapter: adapter(), chains: [chain] })
-      const client = createClient({ chain, transport: custom(provider) })
+      const client = provider.getClient()
 
-      const digest = '0xdeadbeef' as const
+      const digest = '0x00000000000000000000000000000000000000000000000000000000deadbeef' as const
       const result = await provider.request({
         method: 'wallet_connect',
         params: [{ capabilities: { method: 'register', digest } }],
@@ -424,7 +424,7 @@ describe.each(adapters)('$name', ({ adapter }) => {
         params: [{ calls: [transferCall] }],
       })
 
-      const client = createClient({ chain, transport: custom(provider) })
+      const client = provider.getClient()
       const receipt = await waitForTransactionReceipt(client, { hash })
 
       const {
@@ -857,7 +857,7 @@ describe.each(adapters)('$name', ({ adapter }) => {
 
     test('behavior: signature is verifiable on-chain', async () => {
       const provider = Provider.create({ adapter: adapter(), chains: [chain] })
-      const client = createClient({ chain, transport: custom(provider) })
+      const client = provider.getClient()
 
       const connected = await connect(provider)
 
@@ -905,7 +905,7 @@ describe.each(adapters)('$name', ({ adapter }) => {
 
     test('behavior: signature is verifiable on-chain', async () => {
       const provider = Provider.create({ adapter: adapter(), chains: [chain] })
-      const client = createClient({ chain, transport: custom(provider) })
+      const client = provider.getClient()
 
       const connected = await connect(provider)
 
@@ -1009,7 +1009,7 @@ describe.each(adapters)('$name', ({ adapter }) => {
       const address = await connect(provider)
       await fund(address)
 
-      const client = createClient({ chain, transport: custom(provider) })
+      const client = provider.getClient()
 
       // Read action: getBalance
       const balance = await getBalance(client, { address })

@@ -1,7 +1,7 @@
 import { announceProvider } from 'mipd'
 import { Mppx, tempo as mppx_tempo } from 'mppx/client'
-import { Hash, Hex, Json, Provider as ox_Provider, RpcRequest, RpcResponse } from 'ox'
-import type { Chain } from 'viem'
+import { Hash, Hex, Json, Provider as ox_Provider, RpcResponse } from 'ox'
+import type { Chain, Client as ViemClient, Transport } from 'viem'
 import { tempo, tempoModerato } from 'viem/chains'
 import { Actions } from 'viem/tempo'
 
@@ -18,6 +18,10 @@ export type Provider = ox_Provider.Provider<{ schema: Schema.Ox }> &
   ox_Provider.Emitter & {
     /** Configured chains. */
     chains: readonly [Chain, ...Chain[]]
+    /** Returns a viem Account for the given address (or active account). */
+    getAccount: Account.Find
+    /** Returns a viem Client for the given (or current) chain ID. */
+    getClient(chainId?: number | undefined): ViemClient<Transport, typeof tempo>
     /** Reactive state store. */
     store: Store.Store
   }
@@ -58,12 +62,12 @@ export function create(options: create.Options): create.ReturnType {
     storage,
   })
 
-  adapter.setup?.({
-    getAccount: (address, options) => Account.find({ address, signable: options?.signable, store }),
-    getClient: (chainId) => Client.fromChainId(chainId, { chains, store }),
-    storage,
-    store,
-  })
+  const getAccount: Account.Find = (options = {}) => Account.find({ ...options, store }) as never
+  function getClient(chainId?: number) {
+    return Client.fromChainId(chainId, { chains, store })
+  }
+
+  adapter.setup?.({ getAccount, getClient, storage, store })
 
   const emitter = ox_Provider.createEmitter()
 
@@ -212,7 +216,7 @@ export function create(options: create.Options): create.ReturnType {
                     return { capabilities: { sync }, id }
                   }
                   const receipt = await adapter.actions.sendTransactionSync(txRequest as never)
-                  const hash = (receipt as { transactionHash: `0x${string}` }).transactionHash
+                  const hash = (receipt as { transactionHash: Hex.Hex }).transactionHash
                   const chainId = Hex.fromNumber(store.getState().chainId)
                   const id = Hex.concat(hash, Hex.padLeft(chainId, 32), sendCallsMagic)
                   return {
@@ -266,7 +270,7 @@ export function create(options: create.Options): create.ReturnType {
                   if (!id.endsWith(sendCallsMagic.slice(2))) throw new Error('`id` not supported')
                   Hex.assert(id)
                   const hash = Hex.slice(id, 0, 32)
-                  const chainId = Hex.slice(id, 32, 64)
+                  const chainId = Hex.fromNumber(Number(Hex.slice(id, 32, 64)))
                   const client = Client.fromChainId(Number(chainId), { chains, store })
                   const receipt = await client.request({
                     method: 'eth_getTransactionReceipt',
@@ -360,7 +364,7 @@ export function create(options: create.Options): create.ReturnType {
       },
       { schema: Schema.ox },
     ),
-    { chains, store },
+    { chains, getAccount, getClient, store },
   )
 
   if (typeof window !== 'undefined') {
@@ -408,7 +412,7 @@ export declare namespace create {
     /** Storage adapter for persistence. @default Storage.idb() in browser, Storage.memory() otherwise. */
     storage?: Storage.Storage | undefined
     /**
-     * Default to the first testnet chain.
+     * Use testnet.
      * @default false
      */
     testnet?: boolean | undefined

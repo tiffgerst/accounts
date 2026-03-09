@@ -1,15 +1,15 @@
 import { Instance, Server } from 'prool'
 import * as TestContainers from 'prool/testcontainers'
-import { createClient, http } from 'viem'
+import { http } from 'viem'
 
-import { fetchOptions } from './config.js'
+import { fetchOptions, getClient } from './config.js'
 
 export async function setupServer({ port }: { port: number }) {
   const tag = await (async () => {
     if (!import.meta.env.VITE_NODE_TAG?.startsWith('http'))
       return import.meta.env.VITE_NODE_TAG ?? 'latest'
 
-    const client = createClient({
+    const client = getClient({
       transport: http(import.meta.env.VITE_NODE_TAG, {
         fetchOptions,
       }),

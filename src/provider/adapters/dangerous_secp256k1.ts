@@ -1,6 +1,6 @@
 import { Account, Secp256k1 } from 'viem/tempo'
 
-import type { Adapter, setup } from '../Adapter.js'
+import type { Adapter } from '../Adapter.js'
 import type * as Store from '../Store.js'
 import { local } from './local.js'
 

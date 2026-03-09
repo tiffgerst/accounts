@@ -1,5 +1,5 @@
 import { Mppx as ServerMppx, tempo } from 'mppx/server'
-import { createClient, http, parseUnits } from 'viem'
+import { parseUnits } from 'viem'
 import { Addresses } from 'viem/tempo'
 import { Actions } from 'viem/tempo'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
@@ -10,7 +10,7 @@ import { type Server, createServer } from '../../test/utils.js'
 import * as Provider from './Provider.js'
 
 const recipient = accounts[1]!.address
-const client = createClient({ chain, transport: http() })
+const client = getClient()
 
 const payment = ServerMppx.create({
   methods: [

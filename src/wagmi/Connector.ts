@@ -44,8 +44,7 @@ export function setup(parameters: setup.Parameters = {} as setup.Parameters) {
 
     return {
       async connect(params = {}) {
-        console.log('test')
-        const { chainId = chains[0].id, isReconnecting, withCapabilities } = params
+        const { isReconnecting, withCapabilities } = params
         const capabilities = 'capabilities' in params ? params.capabilities : undefined
 
         let accounts: readonly { address: Address; capabilities: Record<string, unknown> }[] = []

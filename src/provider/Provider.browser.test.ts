@@ -1,11 +1,11 @@
 import { requestProviders } from 'mipd'
 import { Hex } from 'ox'
-import { type Address, createClient, custom, parseUnits } from 'viem'
+import { type Address, parseUnits } from 'viem'
 import { verifyHash, verifyMessage, verifyTypedData } from 'viem/actions'
 import { Actions, Addresses } from 'viem/tempo'
 import { describe, expect, test } from 'vitest'
 
-import { accounts, chain, http } from '../../test/config.js'
+import { accounts, chain, getClient } from '../../test/config.js'
 import { url as webauthnUrl } from '../../test/webauthn.constants.js'
 import { webAuthn } from './adapters/webAuthn.js'
 import * as Ceremony from './Ceremony.js'
@@ -120,13 +120,13 @@ describe('wallet_connect', () => {
 
     // Disconnect and login with digest
     await provider.request({ method: 'wallet_disconnect' })
-    const digest = '0xdeadbeef' as const
+    const digest = '0x00000000000000000000000000000000000000000000000000000000deadbeef' as const
     const result = await provider.request({
       method: 'wallet_connect',
       params: [{ capabilities: { digest } }],
     })
 
-    const client = createClient({ chain, transport: custom(provider) })
+    const client = provider.getClient()
     const valid = await verifyHash(client, {
       address,
       hash: digest,
@@ -172,13 +172,13 @@ describe('wallet_connect', () => {
   test('behavior: register digest signature is verifiable on-chain', async () => {
     const provider = getProvider({ chains: [chain] })
 
-    const digest = '0xdeadbeef' as const
+    const digest = '0x00000000000000000000000000000000000000000000000000000000deadbeef' as const
     const result = await provider.request({
       method: 'wallet_connect',
       params: [{ capabilities: { method: 'register', digest } }],
     })
 
-    const client = createClient({ chain, transport: custom(provider) })
+    const client = provider.getClient()
     const valid = await verifyHash(client, {
       address: result.accounts[0]!.address,
       hash: digest,
@@ -460,7 +460,7 @@ describe('personal_sign', () => {
       params: [message, address],
     })
 
-    const client = createClient({ chain, transport: custom(provider) })
+    const client = provider.getClient()
     const valid = await verifyMessage(client, {
       address,
       message: { raw: message },
@@ -507,7 +507,7 @@ describe('eth_signTypedData_v4', () => {
       params: [address, JSON.stringify(typedData)],
     })
 
-    const client = createClient({ chain, transport: custom(provider) })
+    const client = provider.getClient()
     const valid = await verifyTypedData(client, {
       address,
       signature,
@@ -566,7 +566,7 @@ describe('eip-6963', () => {
 
 /** Funds an account with fee tokens so it can send transactions. */
 async function fundAccount(address: Address) {
-  const client = createClient({ chain, transport: http() })
+  const client = getClient()
   await Actions.token.transferSync(client, {
     account: accounts[0]!,
     feeToken: Addresses.pathUsd,
