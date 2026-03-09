@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { Registration, Authentication } from 'webauthx/client'
 
+import { hooksUrl, url as webauthnUrl } from '../../test/webauthn.constants.js'
 import { webAuthn } from './adapters/webAuthn.js'
 import * as Ceremony from './Ceremony.js'
 import * as Provider from './Provider.js'
@@ -48,8 +49,7 @@ describe('local', () => {
 })
 
 describe('server', () => {
-  const url = 'http://localhost:44320'
-  const ceremony = Ceremony.server({ url })
+  const ceremony = Ceremony.server({ url: webauthnUrl })
 
   test('default: register → verify returns valid publicKey hex', async () => {
     const { options } = await ceremony.getRegistrationOptions({ name: 'Server Test' })
@@ -84,7 +84,7 @@ describe('server', () => {
     expect(result.credentialId).toBeTypeOf('string')
 
     // Replay same credential → 400 (challenge consumed)
-    const response = await fetch(`${url}/register`, {
+    const response = await fetch(`${webauthnUrl}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credential),
@@ -124,8 +124,7 @@ describe('server', () => {
 })
 
 describe('server (provider round-trip)', () => {
-  const url = 'http://localhost:44320'
-  const ceremony = Ceremony.server({ url })
+  const ceremony = Ceremony.server({ url: webauthnUrl })
 
   test('behavior: wallet_connect register → eth_accounts returns address', async () => {
     const provider = Provider.create({
@@ -171,10 +170,9 @@ describe('server (provider round-trip)', () => {
 })
 
 describe('server (hooks)', () => {
-  const url = 'http://localhost:44321'
 
   test('behavior: onRegister merges extra JSON and headers', async () => {
-    const regOptionsRes = await fetch(`${url}/register/options`, {
+    const regOptionsRes = await fetch(`${hooksUrl}/register/options`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Hook Test' }),
@@ -182,7 +180,7 @@ describe('server (hooks)', () => {
     const { options } = await regOptionsRes.json()
     const credential = await Registration.create({ options })
 
-    const res = await fetch(`${url}/register`, {
+    const res = await fetch(`${hooksUrl}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credential),
@@ -197,7 +195,7 @@ describe('server (hooks)', () => {
 
   test('behavior: onAuthenticate merges extra JSON and headers', async () => {
     // Register first
-    const regOptionsRes = await fetch(`${url}/register/options`, {
+    const regOptionsRes = await fetch(`${hooksUrl}/register/options`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Hook Auth Test' }),
@@ -205,7 +203,7 @@ describe('server (hooks)', () => {
     const { options: regOptions } = await regOptionsRes.json()
     const credential = await Registration.create({ options: regOptions })
 
-    const regRes = await fetch(`${url}/register`, {
+    const regRes = await fetch(`${hooksUrl}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credential),
@@ -213,7 +211,7 @@ describe('server (hooks)', () => {
     const { credentialId } = await regRes.json()
 
     // Authenticate
-    const authOptionsRes = await fetch(`${url}/login/options`, {
+    const authOptionsRes = await fetch(`${hooksUrl}/login/options`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ credentialId }),
@@ -221,7 +219,7 @@ describe('server (hooks)', () => {
     const { options: authOptions } = await authOptionsRes.json()
     const response = await Authentication.sign({ options: authOptions })
 
-    const res = await fetch(`${url}/login`, {
+    const res = await fetch(`${hooksUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(response),

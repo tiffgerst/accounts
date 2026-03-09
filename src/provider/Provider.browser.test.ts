@@ -6,11 +6,12 @@ import { Actions, Addresses } from 'viem/tempo'
 import { describe, expect, test } from 'vitest'
 
 import { accounts, chain, http } from '../../test/config.js'
+import { url as webauthnUrl } from '../../test/webauthn.constants.js'
 import { webAuthn } from './adapters/webAuthn.js'
 import * as Ceremony from './Ceremony.js'
 import * as Provider from './Provider.js'
 
-const ceremony = Ceremony.server({ url: 'http://localhost:44320' })
+const ceremony = Ceremony.server({ url: webauthnUrl })
 
 /** Registers a new account and returns its address. */
 async function connect(provider: ReturnType<typeof Provider.create>) {

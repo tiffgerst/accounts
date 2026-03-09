@@ -2,9 +2,7 @@ import * as Http from 'node:http'
 
 import * as Handler from '../src/server/Handler.js'
 import * as Kv from '../src/server/Kv.js'
-
-export const port = 44320
-export const hooksPort = 44321
+import { hooksPort, port } from './webauthn.constants.js'
 
 export default async function () {
   const kv = Kv.memory()

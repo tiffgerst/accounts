@@ -4,6 +4,7 @@ import { webAuthn as core_webAuthn } from '../src/provider/adapters/webAuthn.js'
 import * as Ceremony from '../src/provider/Ceremony.js'
 import type * as Store from '../src/provider/Store.js'
 import { privateKeys, webAuthnAccounts } from './config.js'
+import { url as webauthnUrl } from './webauthn.constants.js'
 
 /** Creates a `Store.Account` from a test account index. */
 function toStoreAccount(index: number): Store.Account {
@@ -31,6 +32,6 @@ export function secp256k1() {
 
 /** Creates a WebAuthn adapter backed by a server-side ceremony via {@link Ceremony.server}. */
 export function webAuthn() {
-  const ceremony = Ceremony.server({ url: 'http://localhost:44320' })
+  const ceremony = Ceremony.server({ url: webauthnUrl })
   return core_webAuthn({ ceremony })
 }
