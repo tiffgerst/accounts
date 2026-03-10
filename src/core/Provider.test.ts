@@ -15,7 +15,7 @@ import { Account as TempoAccount, Actions, Addresses } from 'viem/tempo'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 
 import { headlessWebAuthn, secp256k1 } from '../../test/adapters.js'
-import { accounts, chain, getClient } from '../../test/config.js'
+import { accounts, chain, getClient, http } from '../../test/config.js'
 import { createServer, type Server } from '../../test/utils.js'
 import * as Expiry from './Expiry.js'
 import * as Handler from '../server/Handler.js'
@@ -1532,7 +1532,8 @@ describe.each(adapters)('$name', ({ adapter }) => {
       server = await createServer(
         Handler.feePayer({
           account: feePayerAccount,
-          client: getClient(),
+          chains: [chain],
+          transports: { [chain.id]: http() },
         }).listener,
       )
     })

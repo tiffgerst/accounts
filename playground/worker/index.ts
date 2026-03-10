@@ -1,5 +1,4 @@
 import { Mppx, tempo } from 'mppx/server'
-import { http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { tempoModerato } from 'viem/chains'
 import { Handler, Kv } from 'zyzz/server'
@@ -27,8 +26,6 @@ const handler = Handler.compose([
     account: privateKeyToAccount(
       '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
     ),
-    chain: tempoModerato,
-    transport: http(),
     path: '/fee-payer',
   }),
 ])

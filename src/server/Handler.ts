@@ -6,9 +6,10 @@ import {
 } from '@remix-run/fetch-router'
 import { Base64, Bytes, Hex, RpcRequest, RpcResponse } from 'ox'
 import { Credential } from 'ox/webauthn'
-import { type Chain, type Client, createClient, type Transport } from 'viem'
+import { type Chain, type Client, createClient, http, type Transport } from 'viem'
 import type { LocalAccount } from 'viem/accounts'
 import { signTransaction } from 'viem/actions'
+import { tempo, tempoModerato } from 'viem/chains'
 import { Formatters, Transaction } from 'viem/tempo'
 import {
   Authentication,
@@ -16,7 +17,6 @@ import {
   type Registration as Registration_Types,
 } from 'webauthx/server'
 
-import type { OneOf } from '../internal/types.js'
 import * as RequestListener from './internal/requestListener.js'
 import type { Kv } from './Kv.js'
 
@@ -114,21 +114,13 @@ export declare namespace from {
  * ### Cloudflare Worker
  *
  * ```ts
- * import { createClient, http } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { tempo } from 'viem/chains'
  * import { Handler } from 'zyzz/server'
- *
- * const client = createClient({
- *   chain: tempoTestnet.extend({ feeToken: '0x20c0000000000000000000000000000000000001' }),
- *   transport: http(),
- * })
  *
  * export default {
  *   fetch(request) {
  *     return Handler.feePayer({
  *       account: privateKeyToAccount('0x...'),
- *       client,
  *     }).fetch(request)
  *   }
  * }
@@ -138,19 +130,11 @@ export declare namespace from {
  * ### Next.js
  *
  * ```ts
- * import { createClient, http } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { tempo } from 'viem/chains'
  * import { Handler } from 'zyzz/server'
- *
- * const client = createClient({
- *   chain: tempoTestnet.extend({ feeToken: '0x20c0000000000000000000000000000000000001' }),
- *   transport: http(),
- * })
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
- *   client,
  * })
  *
  * export GET = handler.fetch
@@ -161,19 +145,11 @@ export declare namespace from {
  * ### Hono
  *
  * ```ts
- * import { createClient, http } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { tempo } from 'viem/chains'
  * import { Handler } from 'zyzz/server'
- *
- * const client = createClient({
- *   chain: tempoTestnet.extend({ feeToken: '0x20c0000000000000000000000000000000000001' }),
- *   transport: http(),
- * })
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
- *   client,
  * })
  *
  * const app = new Hono()
@@ -186,19 +162,11 @@ export declare namespace from {
  * ### Node.js
  *
  * ```ts
- * import { createClient, http } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { tempo } from 'viem/chains'
  * import { Handler } from 'zyzz/server'
- *
- * const client = createClient({
- *   chain: tempoTestnet.extend({ feeToken: '0x20c0000000000000000000000000000000000001' }),
- *   transport: http(),
- * })
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
- *   client,
  * })
  *
  * const server = createServer(handler.listener)
@@ -209,22 +177,11 @@ export declare namespace from {
  * ### Bun
  *
  * ```ts
- * import { createClient, http } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { tempo } from 'viem/chains'
  * import { Handler } from 'zyzz/server'
- *
- * const client = createClient({
- *   account: privateKeyToAccount('0x...'),
- *   chain: tempoTestnet.extend({
- *     feeToken: '0x20c0000000000000000000000000000000000001',
- *   }),
- *   transport: http(),
- * })
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
- *   client,
  * })
  *
  * Bun.serve(handler)
@@ -234,19 +191,11 @@ export declare namespace from {
  * ### Deno
  *
  * ```ts
- * import { createClient, http } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { tempo } from 'viem/chains'
  * import { Handler } from 'zyzz/server'
- *
- * const client = createClient({
- *   chain: tempoTestnet.extend({ feeToken: '0x20c0000000000000000000000000000000000001' }),
- *   transport: http(),
- * })
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
- *   client,
  * })
  *
  * Deno.serve(handler)
@@ -256,19 +205,11 @@ export declare namespace from {
  * ### Express
  *
  * ```ts
- * import { createClient, http } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { tempo } from 'viem/chains'
  * import { Handler } from 'zyzz/server'
- *
- * const client = createClient({
- *   chain: tempoTestnet.extend({ feeToken: '0x20c0000000000000000000000000000000000001' }),
- *   transport: http(),
- * })
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
- *   client,
  * })
  *
  * const app = express()
@@ -276,21 +217,51 @@ export declare namespace from {
  * app.listen(3000)
  * ```
  *
+ * @example
+ * ### Custom chains & transports
+ *
+ * ```ts
+ * import { http } from 'viem'
+ * import { privateKeyToAccount } from 'viem/accounts'
+ * import { tempo, tempoModerato } from 'viem/chains'
+ * import { Handler } from 'zyzz/server'
+ *
+ * const handler = Handler.feePayer({
+ *   account: privateKeyToAccount('0x...'),
+ *   chains: [tempo, tempoModerato],
+ *   transports: {
+ *     [tempo.id]: http('https://rpc.tempo.xyz'),
+ *     [tempoModerato.id]: http('https://rpc.moderato.tempo.xyz'),
+ *   },
+ * })
+ * ```
+ *
  * @param options - Options.
  * @returns Request handler.
  */
 export function feePayer(options: feePayer.Options) {
-  const { account, onRequest, path = '/' } = options
+  const {
+    account,
+    chains = [tempo, tempoModerato],
+    onRequest,
+    path = '/',
+    transports = {},
+  } = options
 
-  const client = (() => {
-    if ('client' in options) return options.client!
-    if ('chain' in options && 'transport' in options)
-      return createClient({
-        chain: options.chain,
-        transport: options.transport,
-      })
-    throw new Error('No client or chain provided')
-  })()
+  const clients = new Map<number, Client>()
+  for (const chain of chains) {
+    const transport = transports[chain.id] ?? http()
+    clients.set(chain.id, createClient({ chain, transport }))
+  }
+
+  function getClient(chainId?: number): Client {
+    if (chainId) {
+      const client = clients.get(chainId)
+      if (!client) throw new Error(`Chain ${chainId} not configured`)
+      return client
+    }
+    return clients.get(chains[0]!.id)!
+  }
 
   const router = from(options)
 
@@ -302,6 +273,7 @@ export function feePayer(options: feePayer.Options) {
 
       if (request.method === 'eth_signTransaction') {
         const transactionRequest = Formatters.formatTransaction(request.params?.[0] as never)
+        const client = getClient(transactionRequest.chainId)
 
         const serializedTransaction = await signTransaction(client, {
           ...transactionRequest,
@@ -316,6 +288,7 @@ export function feePayer(options: feePayer.Options) {
       if ((request as any).method === 'eth_signRawTransaction') {
         const serialized = request.params?.[0] as `0x76${string}`
         const transaction = Transaction.deserialize(serialized)
+        const client = getClient(transaction.chainId)
 
         const serializedTransaction = await signTransaction(client, {
           ...transaction,
@@ -333,6 +306,7 @@ export function feePayer(options: feePayer.Options) {
       ) {
         const serialized = request.params?.[0] as `0x76${string}`
         const transaction = Transaction.deserialize(serialized)
+        const client = getClient(transaction.chainId)
 
         const serializedTransaction = await signTransaction(client, {
           ...transaction,
@@ -380,22 +354,19 @@ export declare namespace feePayer {
   export type Options = from.Options & {
     /** Account to use as the fee payer. */
     account: LocalAccount
+    /**
+     * Supported chains. The handler resolves the client based on the
+     * `chainId` in the incoming transaction.
+     * @default [tempo, tempoModerato]
+     */
+    chains?: readonly [Chain, ...Chain[]] | undefined
     /** Function to call before handling the request. */
     onRequest?: (request: RpcRequest.RpcRequest) => Promise<void>
     /** Path to use for the handler. */
     path?: string | undefined
-  } & OneOf<
-      | {
-          /** Client to use. */
-          client: Client
-        }
-      | {
-          /** Chain to use. */
-          chain: Chain
-          /** Transport to use. */
-          transport: Transport
-        }
-    >
+    /** Transports keyed by chain ID. Defaults to `http()` for each chain. */
+    transports?: Record<number, Transport> | undefined
+  }
 }
 
 /**

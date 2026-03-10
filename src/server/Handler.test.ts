@@ -6,7 +6,7 @@ import { sendTransactionSync } from 'viem/actions'
 import { withFeePayer } from 'viem/tempo'
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
 
-import { accounts, getClient, http } from '../../test/config.js'
+import { accounts, chain, getClient, http } from '../../test/config.js'
 import { createServer, type Server } from '../../test/utils.js'
 import * as Ceremony from '../core/Ceremony.js'
 import * as Handler from './Handler.js'
@@ -707,7 +707,8 @@ describe('feePayer', () => {
     server = await createServer(
       Handler.feePayer({
         account: feePayerAccount,
-        client: getClient(),
+        chains: [chain],
+        transports: { [chain.id]: http() },
         onRequest: async (request) => {
           requests.push(request)
         },
