@@ -520,11 +520,9 @@ export declare namespace create {
      * @default [tempo, tempoModerato]
      */
     chains?: readonly [Chain, ...Chain[]] | undefined
-    /**
-     * Default fee payer service URL.
-     *
-     * When set, transactions with `feePayer: true` will use this URL.
-     * The service should implement the `Handler.feePayer` protocol.
+    /** 
+     * Fee payer URL for interacting with a service running `Handler.feePayer`
+     * from `zyzz/server`.
      */
     feePayer?: string | undefined
     /** Storage adapter for persistence. @default Storage.idb() in browser, Storage.memory() otherwise. */
