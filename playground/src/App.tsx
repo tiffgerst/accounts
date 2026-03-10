@@ -285,6 +285,7 @@ function buildCalls(rows: CallRow[]) {
 
 function Transactions() {
   const [rows, setRows] = useState<CallRow[]>([defaultRow(0)])
+  const [useFeePayer, setUseFeePayer] = useState(false)
   const [result, setResult] = useState<unknown>()
   const [error, setError] = useState<Error>()
   const [method, setMethod] = useState('')
@@ -366,13 +367,23 @@ function Transactions() {
       </button>
 
       <h3>Send</h3>
+      <div style={{ marginBottom: 8 }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={useFeePayer}
+            onChange={(e) => setUseFeePayer(e.target.checked)}
+          />{' '}
+          Fee Payer
+        </label>
+      </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button
           onClick={() =>
             send('eth_sendTransaction', () =>
               provider.request({
                 method: 'eth_sendTransaction',
-                params: [{ calls }],
+                params: [{ calls, ...(useFeePayer ? { feePayer: true } : {}) }],
               }),
             )
           }
@@ -385,7 +396,7 @@ function Transactions() {
             send('eth_sendTransactionSync', () =>
               provider.request({
                 method: 'eth_sendTransactionSync',
-                params: [{ calls }],
+                params: [{ calls, ...(useFeePayer ? { feePayer: true } : {}) }],
               }),
             )
           }

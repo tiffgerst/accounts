@@ -12,6 +12,7 @@ export function createProvider(adapterType: AdapterType) {
     const ceremony = Ceremony.server({ url: '/webauthn' })
     return Provider.create({
       adapter: webAuthn({ ceremony }),
+      feePayer: '/fee-payer',
       testnet: true,
     })
   }
@@ -27,6 +28,7 @@ export function createProvider(adapterType: AdapterType) {
         return { accounts: [newAccount] }
       },
     }),
+    feePayer: '/fee-payer',
     testnet: true,
   })
 }

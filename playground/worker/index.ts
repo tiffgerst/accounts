@@ -1,12 +1,8 @@
 import { Mppx, tempo } from 'mppx/server'
+import { http } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import { tempoModerato } from 'viem/chains'
 import { Handler, Kv } from 'zyzz/server'
-
-const webauthn = Handler.webauthn({
-  kv: Kv.memory(),
-  origin: 'http://localhost:5173',
-  path: '/webauthn',
-  rpId: 'localhost',
-})
 
 const payment = Mppx.create({
   methods: [
@@ -19,6 +15,23 @@ const payment = Mppx.create({
   realm: 'zyzz-playground',
   secretKey: 'playground-secret-key',
 })
+
+const handler = Handler.compose([
+  Handler.webauthn({
+    kv: Kv.memory(),
+    origin: 'http://localhost:5173',
+    path: '/webauthn',
+    rpId: 'localhost',
+  }),
+  Handler.feePayer({
+    account: privateKeyToAccount(
+      '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+    ),
+    chain: tempoModerato,
+    transport: http(),
+    path: '/fee-payer',
+  }),
+])
 
 export default {
   async fetch(request) {
@@ -36,6 +49,6 @@ export default {
       )
     }
 
-    return webauthn.fetch(request)
+    return handler.fetch(request)
   },
 } satisfies ExportedHandler
