@@ -6,11 +6,11 @@ import {
   SwitchChainError,
   UserRejectedRequestError,
 } from 'viem'
-import type * as z from 'zod/mini'
+import * as z from 'zod/mini'
 
 import { webAuthn as webAuthn_adapter } from '../core/adapters/webAuthn.js'
 import * as Provider from '../core/Provider.js'
-import type { wallet_connect } from '../core/zod/rpc.js'
+import * as Rpc from '../core/zod/rpc.js'
 
 /**
  * Creates a wagmi connector backed by a zyzz provider.
@@ -18,7 +18,7 @@ import type { wallet_connect } from '../core/zod/rpc.js'
 export function setup(parameters: setup.Parameters = {} as setup.Parameters) {
   type Properties = {
     connect<withCapabilities extends boolean = false>(parameters?: {
-      capabilities?: NonNullable<z.output<typeof wallet_connect.capabilities.request>> | undefined
+      capabilities?: NonNullable<z.output<typeof Rpc.wallet_connect.capabilities.request>> | undefined
       chainId?: number | undefined
       isReconnecting?: boolean | undefined
       withCapabilities?: withCapabilities | boolean | undefined
@@ -26,7 +26,7 @@ export function setup(parameters: setup.Parameters = {} as setup.Parameters) {
       accounts: withCapabilities extends true
         ? readonly {
             address: Address
-            capabilities: z.output<typeof wallet_connect.capabilities.result>
+            capabilities: z.output<typeof Rpc.wallet_connect.capabilities.result>
           }[]
         : readonly Address[]
       chainId: number
@@ -61,7 +61,7 @@ export function setup(parameters: setup.Parameters = {} as setup.Parameters) {
           if (!accounts?.length && !isReconnecting) {
             const res = await provider.request({
               method: 'wallet_connect',
-              params: [capabilities ? { capabilities } : {}] as never,
+              params: [capabilities ? { capabilities: z.encode(Rpc.wallet_connect.capabilities.request, capabilities) } : {}] as never,
             })
             accounts = res.accounts
           }

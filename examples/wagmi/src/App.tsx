@@ -1,89 +1,133 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
-import { parseUnits, stringify } from 'viem'
-import { Actions } from 'viem/tempo'
+import { useState } from 'react'
+import { formatUnits, parseUnits, stringify, type Hex } from 'viem'
+import { Actions, Addresses } from 'viem/tempo'
 import {
   useConnect,
   useConnection,
-  useConnectorClient,
   useConnectors,
   useDisconnect,
   useSendTransactionSync,
   useSignMessage,
   useSignTypedData,
-  WagmiProvider,
 } from 'wagmi'
 import { Hooks } from 'wagmi/tempo'
-
-import { config } from './config.js'
-
-const queryClient = new QueryClient()
+import { Expiry } from 'zyzz'
 
 export default function App() {
+  const { address, chainId, status } = useConnection()
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <div style={{ maxWidth: 640 }}>
-          <h1>zyzz wagmi example</h1>
+    <div style={{ maxWidth: 640 }}>
+      <h1>wagmi example</h1>
 
-          <h2>Connection</h2>
-          <Connection />
+      <h2>Connection</h2>
+      <pre>
+        {stringify({ address: address ?? null, chainId: chainId ?? null, status }, null, 2)}
+      </pre>
 
-          <h2>Connect</h2>
-          <Connect />
+      <h2>Connect</h2>
+      <Connect />
+
+      {status === 'connected' && (
+        <>
+          <h2>Balance</h2>
+          <Balance />
           <Faucet />
 
           <h2>Transactions</h2>
           <SendTransaction />
 
-          <h2>Signing</h2>
+          <h2>Sign Message</h2>
           <SignMessage />
+
+          <h2>Sign Typed Data</h2>
           <SignTypedData />
-
-          <h2>Receipts</h2>
-          <GetTransactionReceipt />
-        </div>
-      </QueryClientProvider>
-    </WagmiProvider>
-  )
-}
-
-function Connection() {
-  const { address, chainId, status } = useConnection()
-  return (
-    <pre>{stringify({ address: address ?? null, chainId: chainId ?? null, status }, null, 2)}</pre>
+        </>
+      )}
+    </div>
   )
 }
 
 function Connect() {
   const { mutate: connect, status, error } = useConnect()
   const { mutate: disconnect } = useDisconnect()
-  const { status: connectionStatus } = useConnection()
+  const { address } = useConnection()
   const connectors = useConnectors()
   const connector = connectors[0]
+  const [accessKey, setAccessKey] = useState(false)
 
   if (!connector) return null
 
   return (
     <div>
-      <button type="button" onClick={() => connect({ connector })}>
-        Login
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          connect({
-            connector,
-            capabilities: { method: 'register', name: 'Wagmi Example' },
-          })
-        }
-      >
-        Register
-      </button>
-      {connectionStatus !== 'disconnected' && (
+      {address ? (
         <button type="button" onClick={() => disconnect()}>
           Disconnect
         </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              connect({
+                connector,
+                ...(accessKey
+                  ? {
+                      capabilities: {
+                        authorizeAccessKey: {
+                          expiry: Expiry.minutes(5),
+                          limits: [
+                            {
+                              token: Addresses.pathUsd,
+                              limit: parseUnits('5', 6),
+                            },
+                          ],
+                        },
+                      },
+                    }
+                  : {}),
+              })
+            }
+          >
+            Login
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              connect({
+                connector,
+                capabilities: {
+                  method: 'register',
+                  name: 'Wagmi Example',
+                  ...(accessKey
+                    ? {
+                        authorizeAccessKey: {
+                          expiry: Expiry.minutes(5),
+                          limits: [
+                            {
+                              token: Addresses.pathUsd,
+                              limit: parseUnits('5', 6),
+                            },
+                          ],
+                        },
+                      }
+                    : {}),
+                },
+              })
+            }
+          >
+            Register
+          </button>
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                checked={accessKey}
+                onChange={(e) => setAccessKey(e.target.checked)}
+              />{' '}
+              Authorize Access Key ($5 aUSD, 5 minutes)
+            </label>
+          </div>
+        </>
       )}
       <div>{status}</div>
       {error && <pre style={{ color: 'red' }}>{error.message}</pre>}
@@ -91,14 +135,25 @@ function Connect() {
   )
 }
 
+function Balance() {
+  const { address } = useConnection()
+  const { data, isLoading } = Hooks.token.useGetBalance({
+    account: address,
+    token: Addresses.pathUsd,
+    query: {
+      refetchInterval: 1_000,
+    },
+  })
+  return <div>{isLoading ? 'Loading...' : data !== undefined ? formatUnits(data, 6) : '—'}</div>
+}
+
 function Faucet() {
   const { address } = useConnection()
   const { mutate, data, error, isPending } = Hooks.faucet.useFundSync()
   return (
     <div>
-      <h3>tempo_fundAddress</h3>
       <button disabled={!address || isPending} onClick={() => mutate({ account: address! })}>
-        Fund Account
+        Fund
       </button>
       {error && <pre style={{ color: 'red' }}>{error.message}</pre>}
       {data !== undefined && <pre>{stringify(data, null, 2)}</pre>}
@@ -110,7 +165,6 @@ function SendTransaction() {
   const { mutate: sendTransactionSync, data, error, isPending } = useSendTransactionSync()
   return (
     <div>
-      <h3>eth_sendTransaction</h3>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -118,8 +172,8 @@ function SendTransaction() {
           sendTransactionSync({
             calls: [
               Actions.token.transfer.call({
-                to: form.get('to') as string as `0x${string}`,
-                token: '0x20c0000000000000000000000000000000000000',
+                to: form.get('to') as string as Hex,
+                token: Addresses.pathUsd,
                 amount: parseUnits((form.get('amount') as string) || '0', 6),
               }),
             ],
@@ -148,7 +202,6 @@ function SignMessage() {
   const { mutate: signMessage, data, error, isPending } = useSignMessage()
   return (
     <div>
-      <h3>personal_sign</h3>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -178,7 +231,6 @@ function SignTypedData() {
   const { mutate: signTypedData, data, error, isPending } = useSignTypedData()
   return (
     <div>
-      <h3>eth_signTypedData_v4</h3>
       <button
         disabled={isPending}
         onClick={() =>
@@ -209,52 +261,4 @@ function SignTypedData() {
       {data !== undefined && <pre>{data}</pre>}
     </div>
   )
-}
-
-function GetTransactionReceipt() {
-  const { data: client } = useConnectorClient()
-  const [result, error, execute] = useRequest()
-  return (
-    <div>
-      <h3>eth_getTransactionReceipt</h3>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          const hash = new FormData(e.currentTarget).get('hash') as string
-          if (!hash || !client) return
-          execute(() =>
-            client.request({
-              method: 'eth_getTransactionReceipt',
-              params: [hash as `0x${string}`],
-            }),
-          )
-        }}
-        style={{ display: 'flex', gap: 8, alignItems: 'center' }}
-      >
-        <input
-          name="hash"
-          placeholder="Enter tx hash (0x...)"
-          style={{ flex: 1, fontFamily: 'monospace' }}
-        />
-        <button type="submit">Get Receipt</button>
-      </form>
-      {error && <pre style={{ color: 'red' }}>{error.message}</pre>}
-      {result !== undefined && <pre>{stringify(result, null, 2)}</pre>}
-    </div>
-  )
-}
-
-function useRequest() {
-  const [result, setResult] = useState<unknown>()
-  const [error, setError] = useState<Error>()
-  const execute = useCallback(async (fn: () => Promise<unknown>) => {
-    try {
-      setError(undefined)
-      setResult(await fn())
-    } catch (e) {
-      setResult(undefined)
-      setError(e instanceof Error ? e : new Error(String(e)))
-    }
-  }, [])
-  return [result, error, execute] as const
 }
