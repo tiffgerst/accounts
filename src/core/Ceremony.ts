@@ -83,7 +83,7 @@ export function from(ceremony: Ceremony): Ceremony {
  *
  * @example
  * ```ts
- * import { Ceremony } from 'zyzz/provider'
+ * import { Ceremony } from 'zyzz'
  *
  * const ceremony = Ceremony.local()
  * ```
@@ -150,7 +150,7 @@ export declare namespace local {
  *
  * @example
  * ```ts
- * import { Ceremony } from 'zyzz/provider'
+ * import { Ceremony } from 'zyzz'
  *
  * const ceremony = Ceremony.server({ url: 'https://example.com/webauthn' })
  * ```

@@ -13,13 +13,13 @@ catalog:
   react: ^19.1.1
   react-dom: ^19.1.1
   typescript: ^5.9.3
-  viem: ^2.46.2
+  viem: ^2.47.1
   wagmi: ^3.4.2
-
-overrides:
-  zyzz: workspace:*
 
 onlyBuiltDependencies:
   - esbuild
   - simple-git-hooks
   - workerd
+
+overrides:
+  zyzz: workspace:*

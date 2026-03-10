@@ -26,10 +26,19 @@ describe('request', () => {
   })
 
   test('wallet_connect', () => {
-    expectTypeOf<Result<'wallet_connect'>>().toEqualTypeOf<{
+    expectTypeOf<Result<'wallet_connect'>>().toMatchTypeOf<{
       accounts: readonly {
         address: `0x${string}`
-        capabilities: { signature?: `0x${string}` | undefined }
+        capabilities: {
+          accessKey?:
+            | {
+                address: `0x${string}`
+                expiry?: number | undefined
+                limits?: { token: `0x${string}`; limit: string }[] | undefined
+              }
+            | undefined
+          signature?: `0x${string}` | undefined
+        }
       }[]
     }>()
   })

@@ -16,11 +16,11 @@ import { local } from './local.js'
  *
  * @example
  * ```ts
- * import { Ceremony, webAuthn } from 'zyzz/provider'
+ * import { webAuthn } from 'zyzz'
  *
- * const ceremony = Ceremony.local()
- *
- * const adapter = webAuthn({ ceremony })
+ * const provider = Provider.create({
+ *   adapter: webAuthn(),
+ * })
  * ```
  */
 export function webAuthn(options: webAuthn.Options = {}): Adapter {

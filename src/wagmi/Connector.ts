@@ -8,9 +8,9 @@ import {
 } from 'viem'
 import type * as z from 'zod/mini'
 
-import { webAuthn as webAuthn_adapter } from '../provider/adapters/webAuthn.js'
-import * as Provider from '../provider/Provider.js'
-import type { wallet_connect } from '../provider/zod/rpc.js'
+import { webAuthn as webAuthn_adapter } from '../core/adapters/webAuthn.js'
+import * as Provider from '../core/Provider.js'
+import type { wallet_connect } from '../core/zod/rpc.js'
 
 /**
  * Creates a wagmi connector backed by a zyzz provider.
@@ -61,7 +61,7 @@ export function setup(parameters: setup.Parameters = {} as setup.Parameters) {
           if (!accounts?.length && !isReconnecting) {
             const res = await provider.request({
               method: 'wallet_connect',
-              params: [capabilities ? { capabilities } : {}],
+              params: [capabilities ? { capabilities } : {}] as never,
             })
             accounts = res.accounts
           }

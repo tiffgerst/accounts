@@ -9,6 +9,7 @@ import { accounts, chain, getClient } from '../../test/config.js'
 import { url as webauthnUrl } from '../../test/webauthn.constants.js'
 import { webAuthn } from './adapters/webAuthn.js'
 import * as Ceremony from './Ceremony.js'
+import * as Expiry from './Expiry.js'
 import * as Provider from './Provider.js'
 import * as Storage from './Storage.js'
 
@@ -514,6 +515,186 @@ describe('eth_signTypedData_v4', () => {
       ...typedData,
     })
     expect(valid).toMatchInlineSnapshot(`true`)
+  })
+})
+
+describe('wallet_authorizeAccessKey', () => {
+  test('default: grants an access key and returns its address', async () => {
+    const provider = getProvider({ chains: [chain] })
+    await connect(provider)
+
+    const result = await provider.request({ method: 'wallet_authorizeAccessKey' })
+    expect(result.address).toMatch(/^0x[0-9a-fA-F]{40}$/)
+  })
+
+  test('behavior: granted access key is used for sendTransactionSync', async () => {
+    const provider = getProvider({ chains: [chain] })
+    const address = await connect(provider)
+    await fundAccount(address)
+
+    await provider.request({ method: 'wallet_authorizeAccessKey' })
+
+    const receipt = await provider.request({
+      method: 'eth_sendTransactionSync',
+      params: [{ calls: [transferCall] }],
+    })
+    expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+  })
+
+  test('behavior: with expiry option', async () => {
+    const provider = getProvider({ chains: [chain] })
+    await connect(provider)
+
+    const expiry = Math.floor(Date.now() / 1000) + 3600
+    const result = await provider.request({
+      method: 'wallet_authorizeAccessKey',
+      params: [{ expiry }],
+    })
+    expect(result.address).toMatch(/^0x[0-9a-fA-F]{40}$/)
+    expect(result.expiry).toBe(expiry)
+  })
+
+  test('behavior: with limits option', async () => {
+    const provider = getProvider({ chains: [chain] })
+    const address = await connect(provider)
+    await fundAccount(address)
+
+    const result = await provider.request({
+      method: 'wallet_authorizeAccessKey',
+      params: [
+        {
+          expiry: Expiry.days(1),
+          limits: [{ token: Addresses.pathUsd, limit: Hex.fromNumber(parseUnits('5', 6)) }],
+        },
+      ],
+    })
+    expect(result.limits).toMatchInlineSnapshot(`
+      [
+        {
+          "limit": "0x4c4b40",
+          "token": "0x20c0000000000000000000000000000000000000",
+        },
+      ]
+    `)
+
+    const receipt = await provider.request({
+      method: 'eth_sendTransactionSync',
+      params: [{ calls: [transferCall] }],
+    })
+    expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+  })
+})
+
+describe('wallet_revokeAccessKey', () => {
+  test('default: revokes a granted access key', async () => {
+    const provider = getProvider({ chains: [chain] })
+    await connect(provider)
+
+    const connected = (await provider.request({ method: 'eth_accounts' }))[0]!
+    const { address: keyAddress } = await provider.request({
+      method: 'wallet_authorizeAccessKey',
+    })
+
+    await provider.request({
+      method: 'wallet_revokeAccessKey',
+      params: [{ address: connected, accessKeyAddress: keyAddress }],
+    })
+
+    await fundAccount(connected)
+
+    const receipt = await provider.request({
+      method: 'eth_sendTransactionSync',
+      params: [{ calls: [transferCall] }],
+    })
+    expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+  })
+})
+
+describe('wallet_connect with authorizeAccessKey', () => {
+  test('default: grants access key during register', async () => {
+    const provider = getProvider({ chains: [chain] })
+
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [
+        {
+          capabilities: {
+            method: 'register',
+            authorizeAccessKey: { expiry: Math.floor(Date.now() / 1000) + 3600 },
+          },
+        },
+      ],
+    })
+    expect(result.accounts.length).toBeGreaterThanOrEqual(1)
+    expect(result.accounts[0]!.capabilities.keyAuthorization).toBeDefined()
+    expect(result.accounts[0]!.capabilities.keyAuthorization!.address).toMatch(/^0x[0-9a-f]{40}$/i)
+
+    const address = result.accounts[0]!.address
+    await fundAccount(address)
+
+    const receipt = await provider.request({
+      method: 'eth_sendTransactionSync',
+      params: [{ calls: [transferCall] }],
+    })
+    expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+  })
+
+  test('behavior: authorizeAccessKey with expiry during register', async () => {
+    const provider = getProvider({ chains: [chain] })
+
+    const expiry = Math.floor(Date.now() / 1000) + 3600
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register', authorizeAccessKey: { expiry } } }],
+    })
+    expect(result.accounts.length).toBeGreaterThanOrEqual(1)
+  })
+
+  test('behavior: authorizeAccessKey during login', async () => {
+    const provider = getProvider({ chains: [chain] })
+
+    await provider.request({
+      method: 'wallet_connect',
+      params: [{ capabilities: { method: 'register' } }],
+    })
+
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [
+        {
+          capabilities: { authorizeAccessKey: { expiry: Math.floor(Date.now() / 1000) + 3600 } },
+        },
+      ],
+    })
+    expect(result.accounts.length).toBeGreaterThanOrEqual(1)
+
+    const address = result.accounts[0]!.address
+    await fundAccount(address)
+
+    const receipt = await provider.request({
+      method: 'eth_sendTransactionSync',
+      params: [{ calls: [transferCall] }],
+    })
+    expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+  })
+
+  test('behavior: authorizeAccessKey with digest during register', async () => {
+    const provider = getProvider({ chains: [chain] })
+
+    const result = await provider.request({
+      method: 'wallet_connect',
+      params: [
+        {
+          capabilities: {
+            method: 'register',
+            digest: '0xdeadbeef',
+            authorizeAccessKey: { expiry: Math.floor(Date.now() / 1000) + 3600 },
+          },
+        },
+      ],
+    })
+    expect(result.accounts[0]!.capabilities.signature).toMatch(/^0x[0-9a-f]+$/)
+    expect(result.accounts[0]!.capabilities.keyAuthorization).toBeDefined()
   })
 })
 

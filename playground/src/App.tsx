@@ -3,6 +3,7 @@ import { useCallback, useEffect, useSyncExternalStore, useState } from 'react'
 import { parseUnits } from 'viem'
 import { verifyMessage, verifyTypedData } from 'viem/actions'
 import { Actions } from 'viem/tempo'
+import { Expiry } from 'zyzz'
 
 import { type AdapterType, provider, switchAdapter } from './provider.js'
 
@@ -42,6 +43,10 @@ export function App() {
       <EthAccounts />
       <EthChainId />
       <WalletSwitchChain />
+
+      <h2>Access Keys</h2>
+      <WalletAuthorizeAccessKey />
+      <WalletRevokeAccessKey />
 
       <h2>Balances</h2>
       <WalletGetBalances />
@@ -119,7 +124,10 @@ function WalletConnect() {
     const form = new FormData(e.currentTarget)
     const name = form.get('name') as string
     const digest = form.get('digest') as Hex.Hex
+    const accessKey = form.get('accessKey') === 'on'
     const method = (e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')
+
+    const authorizeAccessKey = accessKey ? { expiry: Expiry.days(1) } : undefined
 
     const capabilities =
       method === 'register'
@@ -127,8 +135,12 @@ function WalletConnect() {
             method: 'register',
             ...(name ? { name } : {}),
             ...(digest ? { digest } : {}),
+            ...(authorizeAccessKey ? { authorizeAccessKey } : {}),
           } as const)
-        : ((digest ? { digest } : {}) as const)
+        : {
+            ...(digest ? { digest } : {}),
+            ...(authorizeAccessKey ? { authorizeAccessKey } : {}),
+          }
 
     execute(() =>
       provider.request({
@@ -152,6 +164,11 @@ function WalletConnect() {
             placeholder="0x... (optional)"
             style={{ flex: 1, fontFamily: 'monospace' }}
           />
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <label>
+            <input type="checkbox" name="accessKey" /> Authorize Access Key
+          </label>
         </div>
         <button type="submit" value="login">
           Login
@@ -704,6 +721,93 @@ function WalletGetBalances() {
           </tbody>
         </table>
       )}
+    </Method>
+  )
+}
+
+function WalletAuthorizeAccessKey() {
+  const [result, error, execute] = useRequest()
+  return (
+    <Method method="wallet_authorizeAccessKey" result={result} error={error}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          const form = new FormData(e.currentTarget)
+          const expiry = form.get('expiry') as string
+          const limitToken = form.get('limitToken') as string
+          const limitAmount = form.get('limitAmount') as string
+
+          const params: Record<string, unknown> = {}
+          if (expiry) params.expiry = Math.floor(Date.now() / 1000) + Number(expiry)
+          if (limitToken && limitAmount)
+            params.limits = [
+              { token: limitToken, limit: Hex.fromNumber(parseUnits(limitAmount, 6)) },
+            ]
+
+          execute(() =>
+            provider.request({
+              method: 'wallet_authorizeAccessKey',
+              ...(Object.keys(params).length > 0 ? { params: [params] } : {}),
+            } as never),
+          )
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <label>Expiry (seconds)</label>
+          <input name="expiry" placeholder="3600" style={{ flex: 1 }} />
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <label>Limit Token</label>
+          <select name="limitToken" style={{ flex: 1 }}>
+            <option value="">None</option>
+            {Object.entries(tokens).map(([name, addr]) => (
+              <option key={addr} value={addr}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <label>Limit Amount</label>
+          <input name="limitAmount" placeholder="100" style={{ flex: 1 }} />
+        </div>
+        <button type="submit">Authorize</button>
+      </form>
+    </Method>
+  )
+}
+
+function WalletRevokeAccessKey() {
+  const [result, error, execute] = useRequest()
+  return (
+    <Method method="wallet_revokeAccessKey" result={result} error={error}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          const form = new FormData(e.currentTarget)
+          const accessKeyAddress = form.get('accessKeyAddress') as `0x${string}`
+          if (!accessKeyAddress) return
+          execute(async () => {
+            const accounts = await provider.request({ method: 'eth_accounts' })
+            if (accounts.length === 0) return 'No accounts connected'
+            await provider.request({
+              method: 'wallet_revokeAccessKey',
+              params: [{ address: accounts[0], accessKeyAddress }],
+            })
+            return 'revoked'
+          })
+        }}
+      >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <label>Access Key Address</label>
+          <input
+            name="accessKeyAddress"
+            placeholder="0x..."
+            style={{ flex: 1, fontFamily: 'monospace' }}
+          />
+        </div>
+        <button type="submit">Revoke</button>
+      </form>
     </Method>
   )
 }

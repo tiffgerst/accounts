@@ -1,8 +1,9 @@
-import { Hex, Provider as core_Provider } from 'ox'
+import { Hex, Provider as core_Provider, WebCryptoP256 } from 'ox'
+import { KeyAuthorization } from 'ox/tempo'
 import { type Address, createClient, custom, parseUnits } from 'viem'
 import {
   getBalance,
-  sendTransaction,
+  sendTransactionSync,
   signMessage,
   verifyHash,
   verifyMessage,
@@ -10,11 +11,12 @@ import {
   waitForTransactionReceipt,
 } from 'viem/actions'
 import { tempo, tempoModerato } from 'viem/chains'
-import { Actions, Addresses } from 'viem/tempo'
+import { Account as TempoAccount, Actions, Addresses } from 'viem/tempo'
 import { describe, expect, test } from 'vitest'
 
 import { headlessWebAuthn, secp256k1 } from '../../test/adapters.js'
 import { accounts, chain, getClient } from '../../test/config.js'
+import * as Expiry from './Expiry.js'
 import * as Provider from './Provider.js'
 import * as Storage from './Storage.js'
 
@@ -693,11 +695,17 @@ describe.each(adapters)('$name', ({ adapter }) => {
       expect(result).toMatchInlineSnapshot(`
         {
           "0x1079": {
+            "accessKeys": {
+              "status": "supported",
+            },
             "atomic": {
               "status": "supported",
             },
           },
           "0xa5bf": {
+            "accessKeys": {
+              "status": "supported",
+            },
             "atomic": {
               "status": "supported",
             },
@@ -718,6 +726,9 @@ describe.each(adapters)('$name', ({ adapter }) => {
       expect(result).toMatchInlineSnapshot(`
         {
           "0xa5bf": {
+            "accessKeys": {
+              "status": "supported",
+            },
             "atomic": {
               "status": "supported",
             },
@@ -1044,12 +1055,470 @@ describe.each(adapters)('$name', ({ adapter }) => {
         transport: custom(provider),
       })
 
-      const hash = await sendTransaction(client, {
+      const receipt = await sendTransactionSync(client, {
         account: address,
         to: '0x0000000000000000000000000000000000000001',
         value: 0n,
       })
-      expect(hash).toMatch(/^0x[0-9a-f]{64}$/)
+      expect(receipt.status).toBe('success')
+    })
+  })
+
+  describe('wallet_authorizeAccessKey', () => {
+    test('default: grants an access key and returns its address', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      await connect(provider)
+
+      const result = await provider.request({ method: 'wallet_authorizeAccessKey' })
+      expect(result.keyId).toMatch(/^0x[0-9a-fA-F]{40}$/)
+    })
+
+    test('behavior: granted access key is used for sendTransactionSync', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      const address = await connect(provider)
+      await fund(address)
+
+      await provider.request({ method: 'wallet_authorizeAccessKey' })
+
+      const receipt = await provider.request({
+        method: 'eth_sendTransactionSync',
+        params: [{ calls: [transferCall] }],
+      })
+      expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+    })
+
+    test('behavior: with expiry option', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      await connect(provider)
+
+      const expiry = Math.floor(Date.now() / 1000) + 3600
+      const result = await provider.request({
+        method: 'wallet_authorizeAccessKey',
+        params: [{ expiry }],
+      })
+      expect(result.keyId).toMatch(/^0x[0-9a-fA-F]{40}$/)
+      expect(result.expiry).toBe(Hex.fromNumber(expiry))
+    })
+
+    test('behavior: expired access key falls back to root account', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      const address = await connect(provider)
+      await fund(address)
+
+      await provider.request({ method: 'wallet_authorizeAccessKey' })
+      expect(provider.store.getState().accessKeys.length).toBe(1)
+
+      // Expire the access key by mutating the store.
+      const { accessKeys } = provider.store.getState()
+      provider.store.setState({
+        accessKeys: accessKeys.map((k) => ({
+          ...k,
+          expiry: Math.floor(Date.now() / 1000) - 1,
+        })),
+      })
+
+      // Transaction should still succeed via root account fallback.
+      const receipt = await provider.request({
+        method: 'eth_sendTransactionSync',
+        params: [{ calls: [transferCall] }],
+      })
+      expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+      // Verify transaction was sent by the root account, not the access key.
+      expect(receipt.from.toLowerCase()).toBe(address.toLowerCase())
+
+      // Expired access key should be removed from the store.
+      expect(provider.store.getState().accessKeys).toMatchInlineSnapshot(`[]`)
+    })
+
+    test('behavior: with limits option', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      const address = await connect(provider)
+      await fund(address)
+
+      const result = await provider.request({
+        method: 'wallet_authorizeAccessKey',
+        params: [
+          {
+            expiry: Expiry.days(1),
+            limits: [{ token: Addresses.pathUsd, limit: Hex.fromNumber(parseUnits('5', 6)) }],
+          },
+        ],
+      })
+      expect(result.limits).toMatchInlineSnapshot(`
+        [
+          {
+            "limit": "0x4c4b40",
+            "token": "0x20c0000000000000000000000000000000000000",
+          },
+        ]
+      `)
+
+      // Transaction within limit should succeed.
+      const receipt = await provider.request({
+        method: 'eth_sendTransactionSync',
+        params: [{ calls: [transferCall] }],
+      })
+      expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+    })
+
+    test('exceeding access key limits falls back to root account', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      const address = await connect(provider)
+      await fund(address)
+
+      // Grant access key with a tiny limit (0.01 PUSD).
+      await provider.request({
+        method: 'wallet_authorizeAccessKey',
+        params: [
+          {
+            expiry: Expiry.days(1),
+            limits: [{ token: Addresses.pathUsd, limit: Hex.fromNumber(parseUnits('0.01', 6)) }],
+          },
+        ],
+      })
+
+      // Transfer 1 PUSD — exceeds access key limit, falls back to root account.
+      const receipt = await provider.request({
+        method: 'eth_sendTransactionSync',
+        params: [{ calls: [transferCall] }],
+      })
+      expect(receipt.status).toBe('0x1')
+      expect(receipt.from.toLowerCase()).toBe(address.toLowerCase())
+    })
+
+    test('behavior: access key is removed after key-auth error (spending limit exceeded)', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      const address = await connect(provider)
+      await fund(address)
+
+      // Grant access key with a tiny limit.
+      await provider.request({
+        method: 'wallet_authorizeAccessKey',
+        params: [
+          {
+            expiry: Expiry.days(1),
+            limits: [{ token: Addresses.pathUsd, limit: Hex.fromNumber(parseUnits('0.01', 6)) }],
+          },
+        ],
+      })
+
+      expect(provider.store.getState().accessKeys).toHaveLength(1)
+
+      // Transfer exceeds limit — key-auth error — access key should be removed.
+      await provider.request({
+        method: 'eth_sendTransactionSync',
+        params: [{ calls: [transferCall] }],
+      })
+
+      expect(provider.store.getState().accessKeys).toMatchInlineSnapshot(`[]`)
+    })
+
+    test('behavior: key auth is restored after non-key-auth error', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      const address = await connect(provider)
+      await fund(address)
+
+      // Grant access key without limits — spending limit won't be an issue.
+      await provider.request({ method: 'wallet_authorizeAccessKey' })
+
+      // Key auth should be present before first tx.
+      expect(provider.store.getState().accessKeys[0]!.keyAuthorization).toBeDefined()
+
+      // Call a bogus function selector on a known contract — will revert with
+      // a generic contract error, not a key-auth error.
+      await expect(
+        provider.request({
+          method: 'eth_sendTransactionSync',
+          params: [{ calls: [{ to: Addresses.pathUsd, data: '0xdeadbeef' }] }],
+        }),
+      ).rejects.toThrow()
+
+      // Key auth should be restored since the error was not key-auth related.
+      expect(provider.store.getState().accessKeys[0]!.keyAuthorization).toBeDefined()
+    })
+  })
+
+  describe('wallet_revokeAccessKey', () => {
+    test('default: revokes a granted access key', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      await connect(provider)
+
+      const connected = (await provider.request({ method: 'eth_accounts' }))[0]!
+      const { keyId } = await provider.request({
+        method: 'wallet_authorizeAccessKey',
+      })
+
+      await provider.request({
+        method: 'wallet_revokeAccessKey',
+        params: [{ address: connected, accessKeyAddress: keyId }],
+      })
+
+      // After revoking, sendTransactionSync should use root key (still works)
+      const address = (await provider.request({ method: 'eth_accounts' }))[0]!
+      await fund(address)
+
+      const receipt = await provider.request({
+        method: 'eth_sendTransactionSync',
+        params: [{ calls: [transferCall] }],
+      })
+      expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+    })
+  })
+
+  describe('wallet_connect with authorizeAccessKey', () => {
+    test('default: grants access key during register', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+
+      const result = await provider.request({
+        method: 'wallet_connect',
+        params: [
+          {
+            capabilities: {
+              method: 'register',
+              authorizeAccessKey: { expiry: Math.floor(Date.now() / 1000) + 3600 },
+            },
+          },
+        ],
+      })
+      expect(result.accounts.length).toBeGreaterThanOrEqual(1)
+      expect(result.accounts[0]!.capabilities.keyAuthorization).toBeDefined()
+      expect(result.accounts[0]!.capabilities.keyAuthorization!.keyId).toMatch(/^0x[0-9a-f]{40}$/i)
+
+      // Access key should be provisioned — sendTransactionSync should work
+      const address = result.accounts[0]!.address
+      await fund(address)
+
+      const receipt = await provider.request({
+        method: 'eth_sendTransactionSync',
+        params: [{ calls: [transferCall] }],
+      })
+      expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+    })
+
+    test('behavior: authorizeAccessKey with expiry during register', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+
+      const expiry = Math.floor(Date.now() / 1000) + 3600
+      const result = await provider.request({
+        method: 'wallet_connect',
+        params: [{ capabilities: { method: 'register', authorizeAccessKey: { expiry } } }],
+      })
+      expect(result.accounts.length).toBeGreaterThanOrEqual(1)
+    })
+
+    test('behavior: authorizeAccessKey during login', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+
+      // Register first
+      await provider.request({
+        method: 'wallet_connect',
+        params: [{ capabilities: { method: 'register' } }],
+      })
+
+      // Login with authorizeAccessKey
+      const result = await provider.request({
+        method: 'wallet_connect',
+        params: [
+          {
+            capabilities: { authorizeAccessKey: { expiry: Math.floor(Date.now() / 1000) + 3600 } },
+          },
+        ],
+      })
+      expect(result.accounts.length).toBeGreaterThanOrEqual(1)
+
+      const address = result.accounts[0]!.address
+      await fund(address)
+
+      const receipt = await provider.request({
+        method: 'eth_sendTransactionSync',
+        params: [{ calls: [transferCall] }],
+      })
+      expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+    })
+  })
+
+  describe('Provider.create authorizeAccessKey option', () => {
+    test('default: wallet_connect auto-authorizes access key', async () => {
+      const provider = Provider.create({
+        adapter: adapter(),
+        chains: [chain],
+        authorizeAccessKey: () => ({ expiry: Expiry.days(1) }),
+      })
+
+      const result = await provider.request({
+        method: 'wallet_connect',
+        params: [{ capabilities: { method: 'register' } }],
+      })
+      expect(result.accounts.length).toBeGreaterThanOrEqual(1)
+      expect(result.accounts[0]!.capabilities.keyAuthorization).toBeDefined()
+      expect(result.accounts[0]!.capabilities.keyAuthorization!.keyId).toMatch(/^0x[0-9a-f]{40}$/i)
+    })
+
+    test('behavior: auto-authorized access key can send transactions', async () => {
+      const provider = Provider.create({
+        adapter: adapter(),
+        chains: [chain],
+        authorizeAccessKey: () => ({ expiry: Expiry.days(1) }),
+      })
+
+      const result = await provider.request({
+        method: 'wallet_connect',
+        params: [{ capabilities: { method: 'register' } }],
+      })
+      const address = result.accounts[0]!.address
+      await fund(address)
+
+      const receipt = await provider.request({
+        method: 'eth_sendTransactionSync',
+        params: [{ calls: [transferCall] }],
+      })
+      expect(receipt.status).toMatchInlineSnapshot(`"0x1"`)
+    })
+
+    test('behavior: explicit authorizeAccessKey overrides default', async () => {
+      const expiry = Math.floor(Date.now() / 1000) + 3600
+      const provider = Provider.create({
+        adapter: adapter(),
+        chains: [chain],
+        authorizeAccessKey: () => ({ expiry: Expiry.days(7) }),
+      })
+
+      const result = await provider.request({
+        method: 'wallet_connect',
+        params: [{ capabilities: { method: 'register', authorizeAccessKey: { expiry } } }],
+      })
+      expect(result.accounts[0]!.capabilities.keyAuthorization!.expiry).toBe(Hex.fromNumber(expiry))
+    })
+
+    test('behavior: login auto-authorizes access key', async () => {
+      const provider = Provider.create({
+        adapter: adapter(),
+        chains: [chain],
+        authorizeAccessKey: () => ({ expiry: Expiry.days(1) }),
+      })
+
+      await connect(provider)
+      const result = await provider.request({ method: 'wallet_connect' })
+      expect(result.accounts[0]!.capabilities.keyAuthorization).toBeDefined()
+    })
+
+    test('behavior: without option, wallet_connect does not auto-authorize', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+
+      const result = await provider.request({
+        method: 'wallet_connect',
+        params: [{ capabilities: { method: 'register' } }],
+      })
+      expect(result.accounts[0]!.capabilities.keyAuthorization).toBeUndefined()
+    })
+  })
+
+  describe('wallet_authorizeAccessKey with external key', () => {
+    test('default: grants access key for an external key', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      await connect(provider)
+
+      const keyPair = await WebCryptoP256.createKeyPair()
+      const accessKeyAccount = TempoAccount.fromWebCryptoP256(keyPair)
+
+      const result = await provider.request({
+        method: 'wallet_authorizeAccessKey',
+        params: [{ ...accessKeyAccount, expiry: Expiry.days(1) }],
+      })
+      expect(result.keyId).toBe(accessKeyAccount.address)
+      expect(result.keyType).toBe('p256')
+    })
+
+    test('behavior: external key authorization can be used to send a transaction', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+      const rootAddress = await connect(provider)
+      await fund(rootAddress)
+
+      const keyPair = await WebCryptoP256.createKeyPair()
+      const accessKeyAccount = TempoAccount.fromWebCryptoP256(keyPair)
+
+      const result = await provider.request({
+        method: 'wallet_authorizeAccessKey',
+        params: [{ ...accessKeyAccount, expiry: Expiry.days(1) }],
+      })
+
+      const client = provider.getClient()
+      const receipt = await sendTransactionSync(client, {
+        account: TempoAccount.fromWebCryptoP256(keyPair, { access: rootAddress }),
+        calls: [transferCall],
+        keyAuthorization: KeyAuthorization.fromRpc(result),
+      })
+      expect(receipt.status).toBe('success')
+    })
+  })
+
+  describe('wallet_connect with external authorizeAccessKey', () => {
+    test('default: external key authorization via register', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+
+      const keyPair = await WebCryptoP256.createKeyPair()
+      const accessKeyAccount = TempoAccount.fromWebCryptoP256(keyPair)
+
+      const expiry = Math.floor(Date.now() / 1000) + 3600
+      const connectResult = await provider.request({
+        method: 'wallet_connect',
+        params: [
+          {
+            capabilities: {
+              method: 'register',
+              authorizeAccessKey: { expiry, ...accessKeyAccount },
+            },
+          },
+        ],
+      })
+
+      const rootAddress = connectResult.accounts[0]!.address
+      const keyAuthorization = connectResult.accounts[0]!.capabilities.keyAuthorization
+      expect(keyAuthorization).toBeDefined()
+      expect(keyAuthorization!.keyId).toBe(accessKeyAccount.address)
+
+      await fund(rootAddress)
+
+      const client = provider.getClient()
+      const receipt = await sendTransactionSync(client, {
+        account: TempoAccount.fromWebCryptoP256(keyPair, { access: rootAddress }),
+        calls: [transferCall],
+        keyAuthorization: KeyAuthorization.fromRpc(keyAuthorization!),
+      })
+      expect(receipt.status).toBe('success')
+    })
+
+    test('behavior: external key authorization via login', async () => {
+      const provider = Provider.create({ adapter: adapter(), chains: [chain] })
+
+      const rootAddress = await connect(provider)
+      await fund(rootAddress)
+
+      const keyPair = await WebCryptoP256.createKeyPair()
+      const accessKeyAccount = TempoAccount.fromWebCryptoP256(keyPair)
+
+      const expiry = Math.floor(Date.now() / 1000) + 3600
+      const loginResult = await provider.request({
+        method: 'wallet_connect',
+        params: [
+          {
+            capabilities: {
+              authorizeAccessKey: { expiry, ...accessKeyAccount },
+            },
+          },
+        ],
+      })
+
+      const keyAuthorization = loginResult.accounts[0]!.capabilities.keyAuthorization
+      expect(keyAuthorization).toBeDefined()
+
+      const client = provider.getClient()
+      const receipt = await sendTransactionSync(client, {
+        account: TempoAccount.fromWebCryptoP256(keyPair, { access: rootAddress }),
+        calls: [transferCall],
+        keyAuthorization: KeyAuthorization.fromRpc(keyAuthorization!),
+      })
+      expect(receipt.status).toBe('success')
     })
   })
 })

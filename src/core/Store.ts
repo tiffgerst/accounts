@@ -3,13 +3,15 @@ import { persist } from 'zustand/middleware'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { createStore } from 'zustand/vanilla'
 
-import type { Store as Account } from './Account.js'
+import type { AccessKey, Store as Account } from './Account.js'
 import * as Storage from './Storage.js'
 
-export type { Account }
+export type { AccessKey, Account }
 
 /** Reactive state for the provider. */
 export type State = {
+  /** Stored access keys. */
+  accessKeys: readonly AccessKey[]
   /** Connected accounts. */
   accounts: readonly Account[]
   /** Index of the active account in {@link State.accounts}. */
@@ -56,6 +58,7 @@ export function create(options: Options): Store {
     subscribeWithSelector(
       persist<State>(
         () => ({
+          accessKeys: [],
           accounts: [],
           activeAccount: 0,
           chainId,
@@ -66,12 +69,14 @@ export function create(options: Options): Store {
             return {
               ...current,
               ...state,
+              accessKeys: state.accessKeys ?? current.accessKeys,
               chainId: state.chainId ?? current.chainId,
             }
           },
           name: 'store',
           partialize: (state) =>
             ({
+              accessKeys: state.accessKeys,
               accounts: internal_persistPrivate
                 ? state.accounts
                 : state.accounts.map((a) => ({ address: a.address })),

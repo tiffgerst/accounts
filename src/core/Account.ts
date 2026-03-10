@@ -1,4 +1,5 @@
-import { Provider } from 'ox'
+import { Provider, type WebCryptoP256 } from 'ox'
+import { type KeyAuthorization } from 'ox/tempo'
 import type { Hex } from 'viem'
 import type { Address, JsonRpcAccount } from 'viem/accounts'
 import { Account as TempoAccount } from 'viem/tempo'
@@ -18,7 +19,7 @@ export type Store = {
   | { keyType: 'webAuthn'; credential: { id: string; publicKey: Hex } }
   | {
       keyType: 'webCrypto'
-      privateKey: Hex
+      keyPair: Awaited<ReturnType<typeof WebCryptoP256.createKeyPair>>
     }
   | {
       keyType: 'webAuthn_headless'
@@ -28,22 +29,60 @@ export type Store = {
     }
 >
 
+/** Access key entry stored alongside accounts. */
+export type AccessKey = {
+  /** Access key address. */
+  address: Address
+  /** Owner of the access key. */
+  access: Address
+  /** Unix timestamp when the access key expires. */
+  expiry?: number | undefined
+  /** Signed key authorization to attach to the first transaction. Consumed on use. */
+  keyAuthorization?: KeyAuthorization.Signed | undefined
+  /** The WebCrypto key pair backing the access key. Only present for locally-generated keys. */
+  keyPair?: Awaited<ReturnType<typeof WebCryptoP256.createKeyPair>> | undefined
+  /** Key type. */
+  keyType: 'secp256k1' | 'p256' | 'webAuthn' | 'webCrypto'
+  /** TIP-20 spending limits for the access key. */
+  limits?: { token: Address; limit: bigint }[] | undefined
+}
+
 /** Resolves a viem Account from the store by address (or active account). */
 export function find(options: find.Options & { signable: true }): TempoAccount.Account
 export function find(options: find.Options): TempoAccount.Account | JsonRpcAccount
 export function find(options: find.Options): TempoAccount.Account | JsonRpcAccount {
-  const { address, signable = false, store } = options
-  const { accounts, activeAccount } = store.getState()
-  const account = address ? accounts.find((a) => a.address === address) : accounts[activeAccount]
-  if (!account)
+  const { accessKey = true, address, signable = false, store } = options
+  const { accessKeys, accounts, activeAccount } = store.getState()
+
+  const activeAddr = accounts[activeAccount]?.address
+  const root = address
+    ? accounts.find((a) => a.address === address)
+    : accounts.find((a) => a.address === activeAddr)
+  if (!root)
     throw address
       ? new Provider.UnauthorizedError({ message: `Account "${address}" not found.` })
       : new Provider.DisconnectedError({ message: 'No active account.' })
-  return hydrate(account, { signable }) as never
+
+  // When accessKey is requested, prefer a locally-signable access key for this address.
+  if (accessKey) {
+    const key = accessKeys.find(
+      (a) => a.access.toLowerCase() === root.address.toLowerCase() && a.keyPair,
+    )
+    if (key) {
+      // Remove expired access keys.
+      if (key.expiry && key.expiry < Date.now() / 1000)
+        store.setState({ accessKeys: accessKeys.filter((a) => a !== key) })
+      else return hydrateAccessKey(key) as never
+    }
+  }
+
+  return hydrate(root, { signable }) as never
 }
 
 export declare namespace find {
   type Options = {
+    /** Whether to resolve an access key for this account. @default true */
+    accessKey?: boolean | undefined
     /** Address to resolve. Defaults to the active account. */
     address?: Address | undefined
     /** Whether to hydrate signing capability. @default false */
@@ -57,6 +96,15 @@ export declare namespace find {
 export type Find = {
   (options: Omit<find.Options, 'store'> & { signable: true }): TempoAccount.Account
   (options?: Omit<find.Options, 'store'>): TempoAccount.Account | JsonRpcAccount
+}
+
+/** Hydrates an access key entry to a viem Account. Only works for locally-generated keys with a `keyPair`. */
+export function hydrateAccessKey(accessKey: AccessKey): TempoAccount.Account {
+  if (!accessKey.keyPair)
+    throw new Provider.UnauthorizedError({
+      message: 'External access key cannot be hydrated for signing.',
+    })
+  return TempoAccount.fromWebCryptoP256(accessKey.keyPair, { access: accessKey.access })
 }
 
 /** Hydrates a store account to a viem Account. */
@@ -81,7 +129,7 @@ export function hydrate(
     case 'p256':
       return TempoAccount.fromP256(account.privateKey)
     case 'webCrypto':
-      return TempoAccount.fromP256(account.privateKey)
+      return TempoAccount.fromWebCryptoP256(account.keyPair)
     case 'webAuthn':
       return TempoAccount.fromWebAuthnP256(account.credential)
     case 'webAuthn_headless':

@@ -15,7 +15,7 @@ export function fromChainId(
   let client = clients.get(id)
   if (!client) {
     const chain = chains.find((c) => c.id === id) ?? chains[0]!
-    client = createClient({ chain, transport: http() })
+    client = createClient({ chain, transport: http(), pollingInterval: 1000 })
     clients.set(id, client)
   }
   return client as never

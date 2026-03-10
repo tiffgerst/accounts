@@ -26,25 +26,25 @@
     "@types/express": "^5.0.6",
     "@types/http-proxy": "^1.17.17",
     "@types/node": "^25.3.3",
-    "@types/react": "catalog:default",
-    "@types/react-dom": "catalog:default",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@typescript/native-preview": "7.0.0-dev.20260303.1",
-    "@vitejs/plugin-react": "catalog:default",
+    "@vitejs/plugin-react": "catalog:",
     "@vitest/browser-playwright": "^4.0.18",
     "@vitest/coverage-v8": "^4.0.18",
-    "@wagmi/core": "catalog:default",
+    "@wagmi/core": "catalog:",
     "elysia": "^1.4.27",
     "express": "^5.2.1",
     "hono": "^4.12.4",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",
-    "prool": "catalog:default",
-    "react": "catalog:default",
-    "react-dom": "catalog:default",
+    "prool": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "simple-git-hooks": "^2.13.1",
     "testcontainers": "^11.12.0",
-    "typescript": "catalog:default",
-    "viem": "catalog:default",
+    "typescript": "catalog:",
+    "viem": "catalog:",
     "vitest": "^4.0.18",
     "zile": "^0.0.22"
   },
@@ -54,10 +54,10 @@
   "pnpm": {
     "overrides": {
       "ox": "~0.14.0",
-      "react": "catalog:default",
-      "react-dom": "catalog:default",
+      "react": "catalog:",
+      "react-dom": "catalog:",
       "zyzz": "workspace:*",
-      "viem": "catalog:default"
+      "viem": "catalog:"
     }
   },
   "[!start-pkg]": "",
@@ -105,11 +105,6 @@
       "src": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./provider": {
-      "src": "./src/provider/index.ts",
-      "types": "./dist/provider/index.d.ts",
-      "default": "./dist/provider/index.js"
     },
     "./server": {
       "src": "./src/server/index.ts",

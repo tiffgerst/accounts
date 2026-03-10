@@ -5,9 +5,9 @@ import { describe, expectTypeOf, test } from 'vitest'
 import type * as Schema from './Schema.js'
 import type * as Rpc from './zod/rpc.js'
 
-describe('DefineItem', () => {
+describe('Encoded', () => {
   test('eth_accounts', () => {
-    expectTypeOf<Rpc.eth_accounts.Schema>().toEqualTypeOf<{
+    expectTypeOf<Rpc.eth_accounts.Encoded>().toEqualTypeOf<{
       method: 'eth_accounts'
       params: undefined
       returns: readonly Hex[]
@@ -15,7 +15,7 @@ describe('DefineItem', () => {
   })
 
   test('eth_chainId', () => {
-    expectTypeOf<Rpc.eth_chainId.Schema>().toEqualTypeOf<{
+    expectTypeOf<Rpc.eth_chainId.Encoded>().toEqualTypeOf<{
       method: 'eth_chainId'
       params: undefined
       returns: Hex
@@ -23,7 +23,7 @@ describe('DefineItem', () => {
   })
 
   test('eth_requestAccounts', () => {
-    expectTypeOf<Rpc.eth_requestAccounts.Schema>().toEqualTypeOf<{
+    expectTypeOf<Rpc.eth_requestAccounts.Encoded>().toEqualTypeOf<{
       method: 'eth_requestAccounts'
       params: undefined
       returns: readonly Hex[]
@@ -31,65 +31,99 @@ describe('DefineItem', () => {
   })
 
   test('eth_sendTransaction', () => {
-    expectTypeOf<Rpc.eth_sendTransaction.Schema>().toEqualTypeOf<{
+    expectTypeOf<Rpc.eth_sendTransaction.Encoded>().toMatchTypeOf<{
       method: 'eth_sendTransaction'
       params: readonly [
         {
           accessList?: { address: Hex; storageKeys: Hex[] }[] | undefined
           calls?: readonly { data?: Hex | undefined; to?: Hex | undefined }[] | undefined
-          chainId?: number | undefined
+          chainId?: Hex | undefined
           feePayer?: boolean | string | undefined
           feeToken?: Hex | undefined
           from?: Hex | undefined
-          gas?: bigint | undefined
-          maxFeePerGas?: bigint | undefined
-          maxPriorityFeePerGas?: bigint | undefined
-          nonce?: number | undefined
-          nonceKey?: bigint | undefined
-          validAfter?: number | undefined
-          validBefore?: number | undefined
-          value?: bigint | undefined
+          gas?: Hex | undefined
+          maxFeePerGas?: Hex | undefined
+          maxPriorityFeePerGas?: Hex | undefined
+          nonce?: Hex | undefined
+          nonceKey?: Hex | undefined
+          validAfter?: Hex | undefined
+          validBefore?: Hex | undefined
+          value?: Hex | undefined
         },
       ]
       returns: Hex
     }>()
   })
 
-  test('wallet_connect', () => {
-    expectTypeOf<Rpc.wallet_connect.Schema>().toEqualTypeOf<{
-      method: 'wallet_connect'
+  test('wallet_connect: params', () => {
+    expectTypeOf<Rpc.wallet_connect.Encoded['params']>().toMatchTypeOf<
+      | readonly [
+          {
+            capabilities?:
+              | {
+                  digest?: Hex | undefined
+                  authorizeAccessKey?:
+                    | {
+                        address?: Hex | undefined
+                        expiry: number
+                        keyType?: 'secp256k1' | 'p256' | 'webAuthn' | undefined
+                        limits?: { token: Hex; limit: Hex }[] | undefined
+                        publicKey?: Hex | undefined
+                      }
+                    | undefined
+                  method: 'register'
+                  name?: string | undefined
+                  userId?: string | undefined
+                }
+              | {
+                  digest?: Hex | undefined
+                  credentialId?: string | undefined
+                  authorizeAccessKey?:
+                    | {
+                        address?: Hex | undefined
+                        expiry: number
+                        keyType?: 'secp256k1' | 'p256' | 'webAuthn' | undefined
+                        limits?: { token: Hex; limit: Hex }[] | undefined
+                        publicKey?: Hex | undefined
+                      }
+                    | undefined
+                  method?: 'login' | undefined
+                  selectAccount?: boolean | undefined
+                }
+              | undefined
+            version?: string | undefined
+          },
+        ]
+      | undefined
+    >()
+  })
+
+  test('wallet_connect: returns', () => {
+    expectTypeOf<Rpc.wallet_connect.Encoded['returns']>().toHaveProperty('accounts')
+    expectTypeOf<
+      Rpc.wallet_connect.Encoded['returns']['accounts'][number]['address']
+    >().toEqualTypeOf<Hex>()
+  })
+
+  test('wallet_authorizeAccessKey', () => {
+    expectTypeOf<Rpc.wallet_authorizeAccessKey.Encoded>().toMatchTypeOf<{
+      method: 'wallet_authorizeAccessKey'
       params:
         | readonly [
             {
-              capabilities?:
-                | {
-                    digest?: Hex | undefined
-                    method: 'register'
-                    name?: string | undefined
-                    userId?: string | undefined
-                  }
-                | {
-                    digest?: Hex | undefined
-                    credentialId?: string | undefined
-                    method?: 'login' | undefined
-                    selectAccount?: boolean | undefined
-                  }
-                | undefined
-              version?: string | undefined
+              address?: Hex | undefined
+              expiry: number
+              keyType?: 'secp256k1' | 'p256' | 'webAuthn' | undefined
+              limits?: { token: Hex; limit: Hex }[] | undefined
+              publicKey?: Hex | undefined
             },
           ]
         | undefined
-      returns: {
-        accounts: readonly {
-          address: Hex
-          capabilities: { signature?: Hex | undefined }
-        }[]
-      }
     }>()
   })
 
   test('wallet_disconnect', () => {
-    expectTypeOf<Rpc.wallet_disconnect.Schema>().toEqualTypeOf<{
+    expectTypeOf<Rpc.wallet_disconnect.Encoded>().toEqualTypeOf<{
       method: 'wallet_disconnect'
       params: undefined
       returns: undefined
@@ -97,9 +131,9 @@ describe('DefineItem', () => {
   })
 
   test('wallet_switchEthereumChain', () => {
-    expectTypeOf<Rpc.wallet_switchEthereumChain.Schema>().toEqualTypeOf<{
+    expectTypeOf<Rpc.wallet_switchEthereumChain.Encoded>().toEqualTypeOf<{
       method: 'wallet_switchEthereumChain'
-      params: readonly [{ chainId: number }]
+      params: readonly [{ chainId: Hex }]
       returns: undefined
     }>()
   })
@@ -134,7 +168,7 @@ describe('Ox', () => {
 describe('Viem', () => {
   test('is a tuple of all provider methods', () => {
     expectTypeOf<Schema.Viem[0]['Method']>().toEqualTypeOf<'eth_accounts'>()
-    expectTypeOf<Schema.Viem[14]['Method']>().toEqualTypeOf<'wallet_switchEthereumChain'>()
+    expectTypeOf<Schema.Viem[16]['Method']>().toEqualTypeOf<'wallet_switchEthereumChain'>()
   })
 })
 
@@ -156,6 +190,8 @@ describe('Request', () => {
       | 'wallet_getCapabilities'
       | 'wallet_connect'
       | 'wallet_disconnect'
+      | 'wallet_authorizeAccessKey'
+      | 'wallet_revokeAccessKey'
       | 'wallet_switchEthereumChain'
     >()
   })

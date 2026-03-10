@@ -1,8 +1,10 @@
+import type { KeyAuthorization } from 'ox/tempo'
 import type { Client, Hex, Transport } from 'viem'
 import type { Address } from 'viem/accounts'
 import type { tempo } from 'viem/chains'
 
 import type * as Account from './Account.js'
+import type * as Schema from './Schema.js'
 import type * as Storage from './Storage.js'
 import type * as Store from './Store.js'
 import type * as Rpc from './zod/rpc.js'
@@ -19,24 +21,28 @@ export type Adapter = {
   rdns?: string | undefined
   /** Adapter actions dispatched by the provider's `request()` method. */
   actions: {
+    /** Grant an access key for the active account. */
+    authorizeAccessKey?:
+      | ((params: authorizeAccessKey.Parameters) => Promise<authorizeAccessKey.ReturnType>)
+      | undefined
     /** Create a new account (e.g. WebAuthn registration). */
     createAccount: (params: createAccount.Parameters) => Promise<createAccount.ReturnType>
     /** Disconnect hook for adapter-specific cleanup. */
     disconnect?: (() => Promise<void>) | undefined
     /** Discover existing accounts (e.g. WebAuthn assertion). */
     loadAccounts: (params?: loadAccounts.Parameters | undefined) => Promise<loadAccounts.ReturnType>
+    /** Revoke an access key. */
+    revokeAccessKey?: ((params: revokeAccessKey.Parameters) => Promise<void>) | undefined
     /** Send a transaction. */
-    sendTransaction: (
-      request: ActionRequest<Rpc.eth_sendTransaction.Schema>,
-    ) => Promise<Rpc.eth_sendTransaction.Schema['returns']>
+    sendTransaction: (request: sendTransaction.Parameters) => Promise<sendTransaction.ReturnType>
     /** Send a transaction and wait for the receipt. */
     sendTransactionSync: (
-      request: ActionRequest<Rpc.eth_sendTransactionSync.Schema>,
-    ) => Promise<Rpc.eth_sendTransactionSync.Schema['returns']>
+      request: sendTransactionSync.Parameters,
+    ) => Promise<sendTransactionSync.ReturnType>
     /** Sign a personal message (EIP-191). */
     signPersonalMessage: (params: signPersonalMessage.Parameters) => Promise<Hex>
     /** Sign a transaction without broadcasting it. */
-    signTransaction: (request: ActionRequest<Rpc.eth_signTransaction.Schema>) => Promise<Hex>
+    signTransaction: (request: signTransaction.Parameters) => Promise<signTransaction.ReturnType>
     /** Sign EIP-712 typed data. */
     signTypedData: (params: signTypedData.Parameters) => Promise<Hex>
     /** Switch chain hook for adapter-specific handling. */
@@ -51,10 +57,12 @@ export type Adapter = {
 }
 
 /** Spreads decoded params with `_encoded` carrying the raw wire format. */
-export type ActionRequest<rpc extends { method: string; params: unknown }> =
-  (rpc['params'] extends readonly [infer first] ? first : never) & {
-    _encoded: { method: rpc['method']; params: rpc['params'] }
-  }
+export type ActionRequest<item extends Schema.Item> =
+  Schema.Decoded<item>['params'] extends readonly [infer first]
+    ? first & {
+        _encoded: { method: Schema.Encoded<item>['method']; params: Schema.Encoded<item>['params'] }
+      }
+    : never
 
 export declare namespace setup {
   type Parameters = {
@@ -73,6 +81,8 @@ export declare namespace createAccount {
   type Parameters = {
     /** Digest to sign. */
     digest?: Hex | undefined
+    /** Grant an access key during the ceremony. */
+    authorizeAccessKey?: authorizeAccessKey.Parameters | undefined
     /** Display name for the new account (e.g. credential name for WebAuthn). */
     name: string
     /** Opaque user identifier (e.g. for WebAuthn `user.id`). */
@@ -80,6 +90,8 @@ export declare namespace createAccount {
   }
   type ReturnType = {
     accounts: readonly Store.Account[]
+    /** Signed key authorization, if an access key was granted. */
+    keyAuthorization?: authorizeAccessKey.ReturnType | undefined
     /** Signature over the digest, if one was provided. */
     signature?: Hex | undefined
   }
@@ -91,12 +103,16 @@ export declare namespace loadAccounts {
     credentialId?: string | undefined
     /** Digest to sign. */
     digest?: Hex | undefined
+    /** Grant an access key during the ceremony. */
+    authorizeAccessKey?: authorizeAccessKey.Parameters | undefined
     /** When `true`, prompts the user to pick from all available credentials instead of using the last-used one. */
     selectAccount?: boolean | undefined
   }
   type ReturnType = {
     /** Loaded accounts. */
     accounts: readonly Store.Account[]
+    /** Signed key authorization, if an access key was granted. */
+    keyAuthorization?: authorizeAccessKey.ReturnType | undefined
     /** Signature over the digest, if one was provided. */
     signature?: Hex | undefined
   }
@@ -118,6 +134,49 @@ export declare namespace signTypedData {
     /** JSON-encoded EIP-712 typed data. */
     data: string
   }
+}
+
+export declare namespace authorizeAccessKey {
+  type Parameters = {
+    /** Access key address. Alternative to `publicKey` when the caller already knows the derived address. */
+    address?: Address | undefined
+    /** Unix timestamp (seconds) when the key expires. */
+    expiry: number
+    /** Key type of the external public key. Required when `publicKey` or `address` is provided. */
+    keyType?: 'secp256k1' | 'p256' | 'webAuthn' | undefined
+    /** TIP-20 spending limits for this key. */
+    limits?: { token: Address; limit: bigint }[] | undefined
+    /** External public key to authorize. When provided, no key pair is generated — the caller holds the signing material. */
+    publicKey?: Hex | undefined
+    /** Pre-computed signature over the key authorization digest (skips a second signing ceremony). */
+    signature?: Hex | undefined
+  }
+
+  type ReturnType = KeyAuthorization.Rpc
+}
+
+export declare namespace revokeAccessKey {
+  type Parameters = {
+    /** Root account address. */
+    address: Address
+    /** Address of the access key to revoke. */
+    accessKeyAddress: Address
+  }
+}
+
+export declare namespace sendTransaction {
+  type Parameters = ActionRequest<typeof Rpc.eth_sendTransaction.schema>
+  type ReturnType = Rpc.eth_sendTransaction.Encoded['returns']
+}
+
+export declare namespace sendTransactionSync {
+  type Parameters = ActionRequest<typeof Rpc.eth_sendTransactionSync.schema>
+  type ReturnType = Rpc.eth_sendTransactionSync.Encoded['returns']
+}
+
+export declare namespace signTransaction {
+  type Parameters = ActionRequest<typeof Rpc.eth_signTransaction.schema>
+  type ReturnType = Hex
 }
 
 export declare namespace switchChain {

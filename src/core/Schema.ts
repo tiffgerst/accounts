@@ -20,6 +20,8 @@ export const schema = from([
   Rpc.wallet_getCapabilities.schema,
   Rpc.wallet_connect.schema,
   Rpc.wallet_disconnect.schema,
+  Rpc.wallet_authorizeAccessKey.schema,
+  Rpc.wallet_revokeAccessKey.schema,
   Rpc.wallet_switchEthereumChain.schema,
 ])
 
@@ -39,8 +41,15 @@ export type Item = {
 /** An array of JSON-RPC method definitions. */
 export type Schema = readonly Item[]
 
-/** Inferred type for a schema item — the decoded output of `{ method, params, returns }`. */
-export type DefineItem<item extends Item> = {
+/** Inferred wire-format type for a schema item — raw JSON-RPC `{ method, params, returns }`. */
+export type Encoded<item extends Item> = {
+  method: z.input<item['method']>
+  params: item['params'] extends z.ZodMiniType ? z.input<item['params']> : undefined
+  returns: item['returns'] extends z.ZodMiniType ? z.input<item['returns']> : undefined
+}
+
+/** Inferred decoded type for a schema item — after codec transforms are applied. */
+export type Decoded<item extends Item> = {
   method: z.input<item['method']>
   params: item['params'] extends z.ZodMiniType ? z.output<item['params']> : undefined
   returns: item['returns'] extends z.ZodMiniType ? z.output<item['returns']> : undefined
@@ -102,8 +111,15 @@ function toRequestSchema<const item extends Item>(item: item): ToRequestSchema<i
   return z.object({ method: item.method }) as never
 }
 
-/** Derives a union of request shapes from a {@link Schema}. */
-type ToRequest<schema extends Schema> = {
+/** Derives a union of wire-format request shapes from a {@link Schema}. */
+type ToRequestInput<schema extends Schema> = {
+  [key in keyof schema]: schema[key]['params'] extends z.ZodMiniType
+    ? { method: z.input<schema[key]['method']>; params: z.input<schema[key]['params']> }
+    : { method: z.input<schema[key]['method']> }
+}[number]
+
+/** Derives a union of decoded request shapes from a {@link Schema}. */
+type ToRequestOutput<schema extends Schema> = {
   [key in keyof schema]: schema[key]['params'] extends z.ZodMiniType
     ? { method: z.output<schema[key]['method']>; params: z.output<schema[key]['params']> }
     : { method: z.output<schema[key]['method']> }
@@ -111,10 +127,10 @@ type ToRequest<schema extends Schema> = {
 
 /** Discriminated union of all provider-handled RPC requests. */
 export const Request: z.ZodMiniType<
-  ToRequest<typeof schema>,
-  ToRequest<typeof schema>
+  ToRequestOutput<typeof schema>,
+  ToRequestInput<typeof schema>
 > = z.discriminatedUnion('method', schema.map(toRequestSchema) as never)
-export type Request = ToRequest<typeof schema>
+export type Request = ToRequestOutput<typeof schema>
 
 /** Defines a JSON-RPC method schema item. */
 export function defineItem<const item extends Item>(item: item): item {

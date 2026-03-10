@@ -1,7 +1,7 @@
 import { Mppx } from 'mppx/client'
 import { generatePrivateKey } from 'viem/accounts'
 import { Account } from 'viem/tempo'
-import { Ceremony, local, Provider, webAuthn } from 'zyzz/provider'
+import { Ceremony, local, Provider, webAuthn } from 'zyzz'
 
 export type AdapterType = 'secp256k1' | 'webAuthn'
 

@@ -1,80 +1,63 @@
+import type { SignatureEnvelope } from 'ox/tempo'
 import * as z from 'zod/mini'
 
 import * as Schema from '../Schema.js'
 import * as u from './utils.js'
 
-const log = z.object({
+const log = z.looseObject({
   address: u.address(),
   blockHash: u.hex(),
-  blockNumber: u.hex(),
+  blockNumber: u.bigint(),
   data: u.hex(),
-  logIndex: u.hex(),
+  logIndex: u.number(),
   removed: z.boolean(),
   topics: z.readonly(z.array(u.hex())),
   transactionHash: u.hex(),
-  transactionIndex: u.hex(),
+  transactionIndex: u.number(),
 })
 
-const receipt = z.object({
-  blobGasPrice: z.optional(u.hex()),
-  blobGasUsed: z.optional(u.hex()),
+const receipt = z.looseObject({
+  blobGasPrice: z.optional(u.bigint()),
+  blobGasUsed: z.optional(u.bigint()),
   blockHash: u.hex(),
-  blockNumber: u.hex(),
+  blockNumber: u.bigint(),
   contractAddress: z.nullable(u.address()),
-  cumulativeGasUsed: u.hex(),
-  effectiveGasPrice: u.hex(),
+  cumulativeGasUsed: u.bigint(),
+  effectiveGasPrice: u.bigint(),
   feePayer: z.optional(u.address()),
   feeToken: z.optional(u.address()),
   from: u.address(),
-  gasUsed: u.hex(),
+  gasUsed: u.bigint(),
   logs: z.array(log),
   logsBloom: u.hex(),
   root: z.optional(u.hex()),
   status: u.hex(),
   to: z.nullable(u.address()),
   transactionHash: u.hex(),
-  transactionIndex: u.hex(),
+  transactionIndex: u.number(),
   type: u.hex(),
 })
 
-const signatureEnvelope: z.ZodMiniType = u.oneOf([
-  z.object({
-    r: u.hex(),
-    s: u.hex(),
-    yParity: u.hex(),
-    v: z.optional(u.hex()),
-    type: z.literal('secp256k1'),
-  }),
-  z.object({
-    preHash: z.boolean(),
-    pubKeyX: u.hex(),
-    pubKeyY: u.hex(),
-    r: u.hex(),
-    s: u.hex(),
-    type: z.literal('p256'),
-  }),
-  z.object({
-    pubKeyX: u.hex(),
-    pubKeyY: u.hex(),
-    r: u.hex(),
-    s: u.hex(),
-    type: z.literal('webAuthn'),
-    webauthnData: u.hex(),
-  }),
-  z.object({
-    type: z.literal('keychain'),
-    userAddress: u.address(),
-    signature: z.lazy(() => signatureEnvelope),
-    version: z.optional(z.union([z.literal('v1'), z.literal('v2')])),
-  }),
-])
+const signatureEnvelope = z.custom<SignatureEnvelope.SignatureEnvelopeRpc>()
 
-const call = z.object({
+const keyType = z.union([z.literal('secp256k1'), z.literal('p256'), z.literal('webAuthn')])
+
+const keyAuthorization = z.looseObject({
+  address: u.address(),
+  chainId: u.bigint(),
+  expiry: z.nullish(u.number()),
+  keyId: u.address(),
+  keyType,
+  limits: z.optional(z.readonly(z.array(z.object({ token: u.address(), limit: u.bigint() })))),
+  signature: signatureEnvelope,
+})
+
+const call = z.looseObject({
   data: z.optional(u.hex()),
   to: z.optional(u.address()),
 })
 
-const transactionRequest = z.object({
+const transactionRequest = z.looseObject({
   accessList: z.optional(
     z.array(z.object({ address: u.address(), storageKeys: z.array(u.hex()) })),
   ),
@@ -99,7 +82,8 @@ export namespace eth_accounts {
     params: undefined,
     returns: z.readonly(z.array(u.address())),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace eth_chainId {
@@ -108,7 +92,8 @@ export namespace eth_chainId {
     params: undefined,
     returns: u.hex(),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace eth_requestAccounts {
@@ -117,7 +102,8 @@ export namespace eth_requestAccounts {
     params: undefined,
     returns: z.readonly(z.array(u.address())),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace eth_sendTransaction {
@@ -126,7 +112,8 @@ export namespace eth_sendTransaction {
     params: z.readonly(z.tuple([transactionRequest])),
     returns: u.hex(),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace eth_signTransaction {
@@ -135,7 +122,8 @@ export namespace eth_signTransaction {
     params: z.readonly(z.tuple([transactionRequest])),
     returns: u.hex(),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace eth_sendTransactionSync {
@@ -144,7 +132,8 @@ export namespace eth_sendTransactionSync {
     params: z.readonly(z.tuple([transactionRequest])),
     returns: receipt,
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace eth_signTypedData_v4 {
@@ -153,7 +142,8 @@ export namespace eth_signTypedData_v4 {
     params: z.readonly(z.tuple([u.address(), z.string()])),
     returns: u.hex(),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace personal_sign {
@@ -162,7 +152,8 @@ export namespace personal_sign {
     params: z.readonly(z.tuple([u.hex(), u.address()])),
     returns: u.hex(),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 const sendCallsCapabilities = z.optional(z.object({ sync: z.optional(z.boolean()) }))
@@ -177,24 +168,25 @@ export namespace wallet_sendCalls {
             atomicRequired: z.optional(z.boolean()),
             calls: z.readonly(z.array(call)),
             capabilities: sendCallsCapabilities,
-            chainId: z.optional(u.hex()),
+            chainId: z.optional(u.number()),
             from: z.optional(u.address()),
             version: z.optional(z.string()),
           }),
         ]),
       ),
     ),
-    returns: z.object({
+    returns: z.looseObject({
       atomic: z.optional(z.boolean()),
       capabilities: sendCallsCapabilities,
-      chainId: z.optional(z.number()),
+      chainId: z.optional(u.number()),
       id: z.string(),
       receipts: z.optional(z.array(receipt)),
       status: z.optional(z.number()),
       version: z.optional(z.string()),
     }),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace wallet_getBalances {
@@ -224,7 +216,8 @@ export namespace wallet_getBalances {
       ),
     ),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace wallet_getCapabilities {
@@ -238,21 +231,60 @@ export namespace wallet_getCapabilities {
     returns: z.record(
       u.hex(),
       z.object({
+        accessKeys: z.optional(
+          z.object({
+            status: z.union([z.literal('supported'), z.literal('unsupported')]),
+          }),
+        ),
         atomic: z.object({
           status: z.union([z.literal('supported'), z.literal('ready'), z.literal('unsupported')]),
         }),
       }),
     ),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
+}
+
+export namespace wallet_authorizeAccessKey {
+  export const parameters = z.looseObject({
+    address: z.optional(u.address()),
+    expiry: z.number(),
+    keyType: z.optional(keyType),
+    limits: z.optional(z.array(z.object({ token: u.address(), limit: u.bigint() }))),
+    publicKey: z.optional(u.hex()),
+  })
+
+  export const schema = Schema.defineItem({
+    method: z.literal('wallet_authorizeAccessKey'),
+    params: z.optional(z.readonly(z.tuple([parameters]))),
+    returns: keyAuthorization,
+  })
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
+}
+
+export namespace wallet_revokeAccessKey {
+  export const schema = Schema.defineItem({
+    method: z.literal('wallet_revokeAccessKey'),
+    params: z.readonly(
+      z.tuple([z.object({ address: u.address(), accessKeyAddress: u.address() })]),
+    ),
+    returns: undefined,
+  })
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace wallet_connect {
+  export const authorizeAccessKey = z.optional(wallet_authorizeAccessKey.parameters)
+
   export const capabilities = {
     request: z.optional(
       z.union([
         z.object({
           digest: z.optional(u.hex()),
+          authorizeAccessKey,
           method: z.literal('register'),
           name: z.optional(z.string()),
           userId: z.optional(z.string()),
@@ -260,12 +292,16 @@ export namespace wallet_connect {
         z.object({
           digest: z.optional(u.hex()),
           credentialId: z.optional(z.string()),
+          authorizeAccessKey,
           method: z.optional(z.literal('login')),
           selectAccount: z.optional(z.boolean()),
         }),
       ]),
     ),
-    result: z.object({ signature: z.optional(u.hex()) }),
+    result: z.object({
+      keyAuthorization: z.optional(keyAuthorization),
+      signature: z.optional(u.hex()),
+    }),
   }
 
   export const schema = Schema.defineItem({
@@ -291,7 +327,8 @@ export namespace wallet_connect {
       ),
     }),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace wallet_disconnect {
@@ -300,7 +337,8 @@ export namespace wallet_disconnect {
     params: undefined,
     returns: undefined,
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace wallet_getCallsStatus {
@@ -309,14 +347,15 @@ export namespace wallet_getCallsStatus {
     params: z.optional(z.readonly(z.tuple([z.string()]))),
     returns: z.object({
       atomic: z.boolean(),
-      chainId: z.number(),
+      chainId: u.number(),
       id: z.string(),
       receipts: z.optional(z.array(receipt)),
       status: z.number(),
       version: z.string(),
     }),
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }
 
 export namespace wallet_switchEthereumChain {
@@ -325,5 +364,6 @@ export namespace wallet_switchEthereumChain {
     params: z.readonly(z.tuple([z.object({ chainId: u.number() })])),
     returns: undefined,
   })
-  export type Schema = Schema.DefineItem<typeof schema>
+  export type Encoded = Schema.Encoded<typeof schema>
+  export type Decoded = Schema.Decoded<typeof schema>
 }

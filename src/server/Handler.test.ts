@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
 
 import { accounts, getClient, http } from '../../test/config.js'
 import { createServer, type Server } from '../../test/utils.js'
-import * as Ceremony from '../provider/Ceremony.js'
+import * as Ceremony from '../core/Ceremony.js'
 import * as Handler from './Handler.js'
 import * as Kv from './Kv.js'
 

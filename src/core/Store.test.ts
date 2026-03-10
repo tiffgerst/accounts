@@ -8,6 +8,7 @@ describe('create', () => {
     const store = Store.create({ chainId: 123 })
     expect(store.getState()).toMatchInlineSnapshot(`
       {
+        "accessKeys": [],
         "accounts": [],
         "activeAccount": 0,
         "chainId": 123,
@@ -24,6 +25,7 @@ describe('create', () => {
 
     expect(store.getState()).toMatchInlineSnapshot(`
       {
+        "accessKeys": [],
         "accounts": [
           {
             "address": "0x0000000000000000000000000000000000000001",
@@ -92,6 +94,7 @@ describe('persistence', () => {
     const raw = storage.getItem('store') as any
     expect(raw.state).toMatchInlineSnapshot(`
       {
+        "accessKeys": [],
         "accounts": [
           {
             "address": "0x0000000000000000000000000000000000000001",
@@ -120,6 +123,7 @@ describe('persistence', () => {
 
     expect(store2.getState()).toMatchInlineSnapshot(`
       {
+        "accessKeys": [],
         "accounts": [
           {
             "address": "0x0000000000000000000000000000000000000001",
@@ -183,6 +187,101 @@ describe('persistence', () => {
     `)
   })
 
+  test('behavior: persists accessKeys to storage', async () => {
+    const storage = Storage.memory()
+    const store = Store.create({ chainId: 123, storage })
+    await Store.waitForHydration(store)
+
+    store.setState({
+      accounts: [{ address: '0x0000000000000000000000000000000000000001' }],
+      accessKeys: [
+        {
+          address: '0x0000000000000000000000000000000000000099',
+          access: '0x0000000000000000000000000000000000000001',
+          keyType: 'webCrypto',
+          keyPair: {} as any,
+        },
+      ],
+    })
+
+    const raw = storage.getItem('store') as any
+    expect(raw.state.accessKeys).toMatchInlineSnapshot(`
+      [
+        {
+          "access": "0x0000000000000000000000000000000000000001",
+          "address": "0x0000000000000000000000000000000000000099",
+          "keyPair": {},
+          "keyType": "webCrypto",
+        },
+      ]
+    `)
+  })
+
+  test('behavior: hydrates accessKeys from storage', async () => {
+    const storage = Storage.memory()
+
+    const store1 = Store.create({ chainId: 123, storage })
+    await Store.waitForHydration(store1)
+
+    store1.setState({
+      accounts: [{ address: '0x0000000000000000000000000000000000000001' }],
+      accessKeys: [
+        {
+          address: '0x0000000000000000000000000000000000000099',
+          access: '0x0000000000000000000000000000000000000001',
+          expiry: 9999999999,
+          limits: [{ token: '0x0000000000000000000000000000000000000abc', limit: 500n }],
+          keyType: 'webCrypto',
+          keyPair: {} as any,
+        },
+      ],
+    })
+
+    const store2 = Store.create({ chainId: 123, storage })
+    await Store.waitForHydration(store2)
+
+    expect(store2.getState().accessKeys).toMatchInlineSnapshot(`
+      [
+        {
+          "access": "0x0000000000000000000000000000000000000001",
+          "address": "0x0000000000000000000000000000000000000099",
+          "expiry": 9999999999,
+          "keyPair": {},
+          "keyType": "webCrypto",
+          "limits": [
+            {
+              "limit": 500n,
+              "token": "0x0000000000000000000000000000000000000abc",
+            },
+          ],
+        },
+      ]
+    `)
+  })
+
+  test('behavior: disconnect clears accessKeys', async () => {
+    const storage = Storage.memory()
+    const store = Store.create({ chainId: 123, storage })
+    await Store.waitForHydration(store)
+
+    store.setState({
+      accounts: [{ address: '0x0000000000000000000000000000000000000001' }],
+      accessKeys: [
+        {
+          address: '0x0000000000000000000000000000000000000099',
+          access: '0x0000000000000000000000000000000000000001',
+          keyType: 'webCrypto',
+          keyPair: {} as any,
+        },
+      ],
+    })
+
+    store.setState({ accessKeys: [], accounts: [], activeAccount: 0 })
+
+    expect(store.getState().accessKeys).toMatchInlineSnapshot(`[]`)
+    expect(store.getState().accounts).toMatchInlineSnapshot(`[]`)
+  })
+
   test('behavior: custom storage key', async () => {
     const storage = Storage.memory({ key: 'custom' })
     const store = Store.create({ chainId: 123, storage })
@@ -213,6 +312,7 @@ describe('waitForHydration', () => {
 
     expect(store.getState()).toMatchInlineSnapshot(`
       {
+        "accessKeys": [],
         "accounts": [
           {
             "address": "0x0000000000000000000000000000000000000001",
