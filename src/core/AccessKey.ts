@@ -48,7 +48,7 @@ export declare namespace prepare {
     /** Unix timestamp when the key expires. */
     expiry?: number | undefined
     /** TIP-20 spending limits. */
-    limits?: { token: Address; limit: bigint }[] | undefined
+    limits?: readonly { token: Address; limit: bigint }[] | undefined
   }
   type ReturnType = {
     /** The generated access key account. */

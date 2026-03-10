@@ -56,7 +56,7 @@ describe('Encoded', () => {
   })
 
   test('wallet_connect: params', () => {
-    expectTypeOf<Rpc.wallet_connect.Encoded['params']>().toMatchTypeOf<
+    expectTypeOf<Rpc.wallet_connect.Encoded['params']>().toExtend<
       | readonly [
           {
             capabilities?:
@@ -67,7 +67,7 @@ describe('Encoded', () => {
                         address?: Hex | undefined
                         expiry: number
                         keyType?: 'secp256k1' | 'p256' | 'webAuthn' | undefined
-                        limits?: { token: Hex; limit: Hex }[] | undefined
+                        limits?: readonly { token: Hex; limit: Hex }[] | undefined
                         publicKey?: Hex | undefined
                       }
                     | undefined
@@ -83,7 +83,7 @@ describe('Encoded', () => {
                         address?: Hex | undefined
                         expiry: number
                         keyType?: 'secp256k1' | 'p256' | 'webAuthn' | undefined
-                        limits?: { token: Hex; limit: Hex }[] | undefined
+                        limits?: readonly { token: Hex; limit: Hex }[] | undefined
                         publicKey?: Hex | undefined
                       }
                     | undefined
@@ -114,7 +114,7 @@ describe('Encoded', () => {
               address?: Hex | undefined
               expiry: number
               keyType?: 'secp256k1' | 'p256' | 'webAuthn' | undefined
-              limits?: { token: Hex; limit: Hex }[] | undefined
+              limits?: readonly { token: Hex; limit: Hex }[] | undefined
               publicKey?: Hex | undefined
             },
           ]

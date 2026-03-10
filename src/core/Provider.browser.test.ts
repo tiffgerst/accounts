@@ -551,7 +551,7 @@ describe('wallet_authorizeAccessKey', () => {
       params: [{ expiry }],
     })
     expect(result.address).toMatch(/^0x[0-9a-fA-F]{40}$/)
-    expect(result.expiry).toBe(expiry)
+    expect(result.expiry).toBe(Hex.fromNumber(expiry))
   })
 
   test('behavior: with limits option', async () => {
