@@ -1,32 +1,30 @@
-import * as Http from 'node:http'
+import { type ChildProcess, spawn } from 'node:child_process'
+import { join } from 'node:path'
 
 import * as Handler from '../src/server/Handler.js'
 import * as Kv from '../src/server/Kv.js'
 import { nodeEnv } from './config.js'
 import { setupServer } from './prool.js'
+import { createServer } from './utils.js'
 import { hooksPort, port } from './webauthn.constants.js'
 
 export default async function () {
   const teardowns: (() => Promise<void>)[] = []
 
   if (nodeEnv === 'localnet') {
-    const teardown = await setupServer({ port: 8546 })
+    const teardown = await setupServer({ port: Number(process.env.VITE_RPC_PORT ?? '8546') })
     teardowns.push(teardown)
   }
 
-  const kv = Kv.memory()
-  const server = Http.createServer((req, res) => {
-    const origin = req.headers.origin ?? 'http://localhost'
-    Handler.webauthn({ kv, origin, rpId: 'localhost' }).listener(req, res)
-  })
-
-  const hooksKv = Kv.memory()
-  const hooksServer = Http.createServer((req, res) => {
-    const origin = req.headers.origin ?? 'http://localhost'
+  const server = await createServer(
+    Handler.webauthn({ kv: Kv.memory(), origin: 'http://localhost', rpId: 'localhost' }).listener,
+    { port },
+  )
+  const hooksServer = await createServer(
     Handler.webauthn({
       cors: { exposeHeaders: 'x-custom' },
-      kv: hooksKv,
-      origin,
+      kv: Kv.memory(),
+      origin: 'http://localhost',
       rpId: 'localhost',
       onRegister({ credentialId }) {
         return Response.json(
@@ -40,24 +38,51 @@ export default async function () {
           { headers: { 'x-custom': 'authenticate-hook' } },
         )
       },
-    }).listener(req, res)
-  })
-
-  await new Promise<void>((resolve) => server.listen(port, resolve))
-  await new Promise<void>((resolve) => hooksServer.listen(hooksPort, resolve))
+    }).listener,
+    { port: hooksPort },
+  )
 
   teardowns.push(async () => {
-    await Promise.all([
-      new Promise<void>((resolve, reject) =>
-        server.close((err) => (err ? reject(err) : resolve())),
-      ),
-      new Promise<void>((resolve, reject) =>
-        hooksServer.close((err) => (err ? reject(err) : resolve())),
-      ),
-    ])
+    await Promise.all([server.closeAsync(), hooksServer.closeAsync()])
+  })
+
+  // Start auth app dev server.
+  const authServer = await new Promise<ChildProcess>((resolve, reject) => {
+    const child = spawn('pnpm', ['exec', 'vite', 'dev', '--port', '5175'], {
+      cwd: join(import.meta.dirname, '../auth'),
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        NODE_ENV: 'development',
+        VITE_RPC_URL: `http://localhost:${process.env.VITE_RPC_PORT ?? '8546'}/99999`,
+      },
+    })
+
+    const timeout = setTimeout(() => {
+      child.kill()
+      reject(new Error('Auth dev server did not start within 60s'))
+    }, 60_000)
+
+    function onData(data: Buffer) {
+      if (data.toString().includes('localhost')) {
+        clearTimeout(timeout)
+        resolve(child)
+      }
+    }
+
+    child.stdout?.on('data', onData)
+    child.stderr?.on('data', onData)
+
+    child.on('error', (err) => {
+      clearTimeout(timeout)
+      reject(err)
+    })
   })
 
   return async () => {
+    authServer.kill('SIGTERM')
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    if (!authServer.killed) authServer.kill('SIGKILL')
     await Promise.all(teardowns.map((fn) => fn()))
   }
 }

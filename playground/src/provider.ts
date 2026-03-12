@@ -1,13 +1,24 @@
+import { Ceremony, Dialog, local, Provider, tempoAuth, webAuthn } from '@tempoxyz/accounts'
 import { Mppx } from 'mppx/client'
 import { generatePrivateKey } from 'viem/accounts'
 import { Account } from 'viem/tempo'
-import { Ceremony, local, Provider, webAuthn } from '@tempoxyz/accounts'
 
-export type AdapterType = 'secp256k1' | 'webAuthn'
+export type AdapterType = 'secp256k1' | 'webAuthn' | 'auth'
+export type DialogMode = 'iframe' | 'popup'
 
-export let provider = createProvider('secp256k1')
+export let dialogMode: DialogMode = 'iframe'
+export let provider = createProvider('auth')
 
 export function createProvider(adapterType: AdapterType) {
+  if (adapterType === 'auth')
+    return Provider.create({
+      adapter: tempoAuth({
+        dialog: dialogMode === 'popup' ? Dialog.popup() : Dialog.iframe(),
+        host: import.meta.env.VITE_AUTH_HOST ?? 'https://localhost:5174',
+      }),
+      testnet: true,
+    })
+
   if (adapterType === 'webAuthn') {
     const ceremony = Ceremony.server({ url: '/webauthn' })
     return Provider.create({
@@ -36,4 +47,10 @@ export function createProvider(adapterType: AdapterType) {
 export function switchAdapter(adapterType: AdapterType) {
   Mppx.restore()
   provider = createProvider(adapterType)
+}
+
+export function switchDialogMode(mode: DialogMode) {
+  dialogMode = mode
+  Mppx.restore()
+  provider = createProvider('auth')
 }

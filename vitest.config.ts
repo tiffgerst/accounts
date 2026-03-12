@@ -17,27 +17,51 @@ export default defineConfig({
       {
         extends: true,
         test: {
-          exclude: ['./src/**/*.browser.test.ts'],
-          include: ['./src/**/*.test.ts'],
-          name: 'core',
+          include: ['./src/**/*.test.ts', '!./src/**/*.browser.test.ts'],
+          name: 'lib',
           globalSetup: [join(import.meta.dirname, './test/setup.global.ts')],
           setupFiles: [join(import.meta.dirname, './test/setup.ts')],
+        },
+      },
+      // {
+      //   extends: true,
+      //   test: {
+      //     name: 'lib/browser',
+      //     include: ['./src/**/*.browser.test.ts'],
+      //     hookTimeout: 30_000,
+      //     testTimeout: 30_000,
+      //     env: { VITE_RPC_PORT: '8546' },
+      //     globalSetup: [join(import.meta.dirname, './test/setup.global.browser.ts')],
+      //     setupFiles: [
+      //       join(import.meta.dirname, './test/setup.ts'),
+      //       join(import.meta.dirname, './test/authenticator.setup.ts'),
+      //     ],
+      //     browser: {
+      //       enabled: true,
+      //       headless: true,
+      //       api: 63315,
+      //       instances: [{ browser: 'chromium' }],
+      //       provider: playwright(),
+      //       screenshotFailures: false,
+      //     },
+      //   },
+      // },
+      {
+        extends: true,
+        test: {
+          name: 'auth',
+          include: ['./auth/**/*.test.ts', '!./auth/**/*.browser.test.ts'],
         },
       },
       {
         extends: true,
         test: {
-          name: 'browser',
-          include: ['./src/**/*.browser.test.ts'],
-          env: { VITE_RPC_PORT: '8546' },
-          globalSetup: [join(import.meta.dirname, './test/setup.global.browser.ts')],
-          setupFiles: [
-            join(import.meta.dirname, './test/setup.ts'),
-            join(import.meta.dirname, './test/authenticator.setup.ts'),
-          ],
+          name: 'auth/browser',
+          include: ['./auth/**/*.browser.test.ts'],
           browser: {
             enabled: true,
             headless: true,
+            api: 63316,
             instances: [{ browser: 'chromium' }],
             provider: playwright(),
             screenshotFailures: false,

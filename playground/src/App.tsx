@@ -1,14 +1,21 @@
+import { Expiry } from '@tempoxyz/accounts'
 import { Hex, Json } from 'ox'
 import { useCallback, useEffect, useSyncExternalStore, useState } from 'react'
 import { parseUnits } from 'viem'
 import { verifyMessage, verifyTypedData } from 'viem/actions'
 import { Actions } from 'viem/tempo'
-import { Expiry } from '@tempoxyz/accounts'
 
-import { type AdapterType, provider, switchAdapter } from './provider.js'
+import {
+  type AdapterType,
+  type DialogMode,
+  dialogMode,
+  provider,
+  switchAdapter,
+  switchDialogMode,
+} from './provider.js'
 
 export function App() {
-  const [adapterType, setAdapterType] = useState<AdapterType>('secp256k1')
+  const [adapterType, setAdapterType] = useState<AdapterType>('auth')
   const [, rerender] = useState(0)
 
   function onSwitch(type: AdapterType) {
@@ -23,9 +30,25 @@ export function App() {
 
       <h2>Adapter</h2>
       <select value={adapterType} onChange={(e) => onSwitch(e.target.value as AdapterType)}>
-        <option value="secp256k1">secp256k1</option>
+        <option value="auth">auth</option>
         <option value="webAuthn">webAuthn</option>
+        <option value="secp256k1">secp256k1</option>
       </select>
+      {adapterType === 'auth' && (
+        <>
+          {' '}
+          <select
+            value={dialogMode}
+            onChange={(e) => {
+              switchDialogMode(e.target.value as DialogMode)
+              rerender((n) => n + 1)
+            }}
+          >
+            <option value="iframe">iframe</option>
+            <option value="popup">popup</option>
+          </select>
+        </>
+      )}
 
       <h2>State</h2>
       <ProviderState />

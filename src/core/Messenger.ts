@@ -1,14 +1,23 @@
+import type { RpcRequest, RpcResponse } from 'ox'
+
+import type * as Store from './Store.js'
+
 /** Messenger interface for cross-frame communication. */
 export type Messenger = {
   /** Tear down all listeners. */
   destroy: () => void
   /** Subscribe to a topic. Returns an unsubscribe function. */
   on: <const topic extends Topic>(
-    topic: topic,
-    listener: (payload: Payload<topic>) => void,
+    topic: topic | Topic,
+    listener: (payload: Payload<topic>, event: MessageEvent) => void,
+    id?: string | undefined,
   ) => () => void
   /** Send a message on a topic. */
-  send: <const topic extends Topic>(topic: topic, payload: Payload<topic>) => void
+  send: <const topic extends Topic>(
+    topic: topic | Topic,
+    payload: Payload<topic>,
+    targetOrigin?: string | undefined,
+  ) => Promise<{ id: string; topic: topic; payload: Payload<topic> }>
 }
 
 /** Bridge messenger that waits for a `ready` signal from the remote frame. */
@@ -26,41 +35,22 @@ export type Schema = [
     payload: undefined
   },
   {
-    topic: 'rpc-request'
+    topic: 'rpc-requests'
     payload: {
-      id: number
-      jsonrpc: '2.0'
-      method: string
-      params?: unknown
+      account: { address: string } | undefined
+      chainId: number
+      requests: readonly Store.QueuedRequest[]
     }
   },
   {
     topic: 'rpc-response'
-    payload: {
-      id: number
-      jsonrpc: '2.0'
-      result?: unknown
-      error?: { code: number; message: string }
-      _request: { id: number; method: string }
+    payload: RpcResponse.RpcResponse & {
+      _request: RpcRequest.RpcRequest
     }
   },
   {
     topic: 'close'
     payload: undefined
-  },
-  {
-    topic: '__internal'
-    payload:
-      | {
-          type: 'init'
-          mode: 'iframe' | 'popup'
-          referrer: { title: string; icon?: string | undefined }
-        }
-      | {
-          type: 'resize'
-          height?: number | undefined
-          width?: number | undefined
-        }
   },
 ]
 
@@ -70,65 +60,69 @@ export type Topic = Schema[number]['topic']
 /** Payload for a given topic. */
 export type Payload<topic extends Topic> = Extract<Schema[number], { topic: topic }>['payload']
 
-type Message<topic extends Topic = Topic> = {
-  topic: topic
-  payload: Payload<topic>
-  /** Namespace to avoid collisions with other postMessage users. */
-  _tempo: true
-}
-
 /** Creates a messenger from a custom implementation. */
 export function from(messenger: Messenger): Messenger {
   return messenger
 }
 
 /**
+ * Normalizes a value into a structured-clone compatible format.
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/structuredClone
+ */
+function normalizeValue<type>(value: type): type {
+  if (Array.isArray(value)) return value.map(normalizeValue) as never
+  if (typeof value === 'function') return undefined as never
+  if (typeof value !== 'object' || value === null) return value
+  if (Object.getPrototypeOf(value) !== Object.prototype)
+    try {
+      return structuredClone(value)
+    } catch {
+      return undefined as never
+    }
+
+  const normalized: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(value)) normalized[k] = normalizeValue(v)
+  return normalized as never
+}
+
+/**
  * Creates a messenger backed by `window.postMessage` / `addEventListener('message')`.
  * Filters messages by `targetOrigin` when provided.
  */
-export function fromWindow(
-  w: Window,
-  options: fromWindow.Options = {},
-): Messenger {
-  const { expectedSource, targetOrigin } = options
-  const listeners = new Set<(event: MessageEvent) => void>()
+export function fromWindow(w: Window, options: fromWindow.Options = {}): Messenger {
+  const { targetOrigin } = options
+  const listeners = new Map<string, (event: MessageEvent) => void>()
 
-  function handler(event: MessageEvent) {
-    for (const listener of listeners) listener(event)
-  }
-  w.addEventListener('message', handler)
-
-  return {
+  return from({
     destroy() {
-      w.removeEventListener('message', handler)
+      for (const listener of listeners.values()) w.removeEventListener('message', listener)
       listeners.clear()
     },
-    on(topic, listener) {
+    on(topic, listener, id) {
       function onMessage(event: MessageEvent) {
-        const data = event.data as Message | undefined
-        if (!data?._tempo) return
-        if (data.topic !== topic) return
+        if (event.data.topic !== topic) return
+        if (id && event.data.id !== id) return
         if (targetOrigin && event.origin !== targetOrigin) return
-        if (expectedSource && event.source !== expectedSource) return
-        listener(data.payload as never)
+        listener(event.data.payload as never, event)
       }
-      listeners.add(onMessage)
+      w.addEventListener('message', onMessage)
+      listeners.set(topic, onMessage)
       return () => {
-        listeners.delete(onMessage)
+        w.removeEventListener('message', onMessage)
+        listeners.delete(topic)
       }
     },
-    send(topic, payload) {
-      const message: Message = { topic, payload, _tempo: true } as never
-      if (targetOrigin) w.postMessage(message, targetOrigin)
-      else w.postMessage(message)
+    async send(topic, payload, target) {
+      const id = crypto.randomUUID()
+      w.postMessage(normalizeValue({ id, payload, topic }), target ?? targetOrigin ?? '*')
+      return { id, payload, topic } as never
     },
-  }
+  })
 }
 
 export declare namespace fromWindow {
   type Options = {
-    /** Expected `event.source` — rejects messages from other frames. */
-    expectedSource?: MessageEventSource | undefined
     /** Only accept messages from this origin. Also used as the `targetOrigin` for `postMessage`. */
     targetOrigin?: string | undefined
   }
@@ -139,53 +133,36 @@ export declare namespace fromWindow {
  * before sending messages when `waitForReady` is `true`.
  */
 export function bridge(parameters: bridge.Parameters): Bridge {
-  const { from, to, waitForReady } = parameters
+  const { from: from_, to, waitForReady = false } = parameters
 
-  const { promise: readyPromise, resolve: resolveReady, reject: rejectReady } =
-    Promise.withResolvers<void>()
-  readyPromise.catch(() => {})
+  let pending = false
 
-  let destroyed = false
-  let readyReceived = false
-  
-  const pending: Array<() => void> = []
+  const ready = withResolvers<void>()
+  from_.on('ready', ready.resolve)
 
-  const offReady = from.on('ready', () => {
-    if (readyReceived) return
-    readyReceived = true
-    resolveReady()
-    for (const send of pending) send()
-    pending.length = 0
+  const messenger = from({
+    destroy() {
+      from_.destroy()
+      to.destroy()
+      if (pending) ready.reject()
+    },
+    on(topic, listener, id) {
+      return from_.on(topic, listener, id)
+    },
+    async send(topic, payload) {
+      pending = true
+      if (waitForReady) await ready.promise.finally(() => (pending = false))
+      return to.send(topic, payload)
+    },
   })
 
   return {
-    destroy() {
-      if (destroyed) return
-      destroyed = true
-      offReady()
-      from.destroy()
-      to.destroy()
-      pending.length = 0
-      rejectReady(new Error('Bridge destroyed'))
-    },
-    on(topic, listener) {
-      return from.on(topic, listener)
-    },
-    send(topic, payload) {
-      if (destroyed) return
-      if (waitForReady && !readyReceived) {
-        pending.push(() => {
-          if (!destroyed) to.send(topic, payload)
-        })
-        return
-      }
-      to.send(topic, payload)
-    },
+    ...messenger,
     ready() {
-      to.send('ready', undefined)
+      void messenger.send('ready', undefined)
     },
     waitForReady() {
-      return readyPromise
+      return ready.promise
     },
   }
 }
@@ -208,10 +185,22 @@ export function noop(): Bridge {
     on() {
       return () => {}
     },
-    send() {},
+    send() {
+      return Promise.resolve(undefined as never)
+    },
     ready() {},
     waitForReady() {
       return Promise.resolve()
     },
   }
+}
+
+function withResolvers<type>() {
+  let resolve: (value: type | PromiseLike<type>) => void = () => undefined
+  let reject: (reason?: unknown) => void = () => undefined
+  const promise = new Promise<type>((resolve_, reject_) => {
+    resolve = resolve_
+    reject = reject_
+  })
+  return { promise, reject, resolve }
 }

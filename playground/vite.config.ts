@@ -2,12 +2,20 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
 import { defineConfig } from 'vite'
+import mkcert from 'vite-plugin-mkcert'
 
 export default defineConfig({
-  plugins: [react(), cloudflare()],
-  resolve: {
-    alias: {
-      '@tempoxyz/accounts': path.resolve(__dirname, '../src'),
-    },
+  server: {
+    host: process.env.VITE_HOST ?? 'localhost',
+    port: Number(process.env.PORT ?? 5173),
+    strictPort: true,
   },
+  plugins: [
+    react(),
+    cloudflare(),
+    mkcert({
+      force: true,
+      hosts: [process.env.VITE_HOST ?? 'localhost'],
+    }),
+  ],
 })
