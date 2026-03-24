@@ -3,7 +3,7 @@
     "build": "zile",
     "changeset:publish": "zile publish:prepare && changeset publish && zile publish:post",
     "changeset:version": "changeset version && pnpm check",
-    "check": "oxlint --fix --ignore-pattern package.json --ignore-pattern embed && oxfmt",
+    "check": "vp lint --fix --ignore-pattern package.json --ignore-pattern embed && vp fmt",
     "check:types": "tsc -b",
     "check:types:examples": "pnpm --filter *-example check:types",
     "dev": "pnpm dev:embed & pnpm dev:playground",
@@ -12,7 +12,7 @@
     "dev:playground": "pnpm --filter playground dev",
     "example:wagmi": "pnpm --filter wagmi dev & pnpm dev:embed",
     "preconstruct": "zile dev",
-    "test": "vitest"
+    "test": "vp test"
   },
   "packageManager": "pnpm@10.18.3",
   "devEngines": {
@@ -33,14 +33,11 @@
     "@types/react-dom": "catalog:",
     "@typescript/native-preview": "7.0.0-dev.20260303.1",
     "@vitejs/plugin-react": "catalog:",
-    "@vitest/browser-playwright": "^4.0.18",
     "@vitest/coverage-v8": "^4.0.18",
     "@wagmi/core": "catalog:",
     "elysia": "^1.4.27",
     "express": "^5.2.1",
     "hono": "^4.12.4",
-    "oxfmt": "^0.35.0",
-    "oxlint": "^1.55.0",
     "playwright-core": "^1.58.2",
     "prool": "catalog:",
     "react": "catalog:",
@@ -49,7 +46,7 @@
     "testcontainers": "^11.12.0",
     "typescript": "catalog:",
     "viem": "catalog:",
-    "vitest": "^4.0.18",
+    "vite-plus": "catalog:",
     "zile": "^0.0.22"
   },
   "simple-git-hooks": {

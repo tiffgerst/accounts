@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "vp dev",
+    "build": "tsc -b && vp build",
     "postinstall": "wrangler types",
-    "preview": "vite preview"
+    "preview": "vp preview"
   },
   "dependencies": {
     "tempodk": "workspace:*",
@@ -22,8 +22,9 @@
     "@types/react-dom": "catalog:default",
     "@vitejs/plugin-react": "catalog:default",
     "typescript": "catalog:default",
-    "vite": "^7.3.1",
+    "vite": "catalog:",
     "vite-plugin-mkcert": "^1.17.10",
-    "wrangler": "^4.71.0"
+    "wrangler": "^4.71.0",
+    "vite-plus": "catalog:"
   }
 }

@@ -18,9 +18,10 @@ catalog:
   react-dom: ^19.1.1
   typescript: ^5.9.3
   viem: ^2.47.1
-  vite: ^7.3.1
-  vitest: ^4.0.18
+  vite: npm:@voidzero-dev/vite-plus-core@~0.1.14
+  vitest: npm:@voidzero-dev/vite-plus-test@~0.1.14
   wagmi: ^3.5.0
+  vite-plus: ~0.1.14
 
 onlyBuiltDependencies:
   - esbuild
@@ -28,4 +29,14 @@ onlyBuiltDependencies:
   - workerd
 
 overrides:
-  'tempodk': workspace:*
+  tempodk: workspace:*
+  vite: 'catalog:'
+  vitest: 'catalog:'
+
+peerDependencyRules:
+  allowAny:
+    - vite
+    - vitest
+  allowedVersions:
+    vite: '*'
+    vitest: '*'

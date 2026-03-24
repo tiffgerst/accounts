@@ -1,4 +1,4 @@
-import { type FrameLocator, page } from 'vitest/browser'
+import { type FrameLocator, page } from 'vite-plus/test/browser'
 
 /**
  * Interact with the dialog iframe while a provider request is in flight.
