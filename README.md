@@ -82,17 +82,17 @@ pnpm check:types      # type checks
 pnpm test             # run tests
 ```
 
-### Embed Reference Implementation
-
-The `embed-ref/` directory contains a minimal, unstyled reference implementation of the embed dialog app. It demonstrates how to build a custom embed using tempodk's `Remote` API.
-
-Select `dialogRefImpl` in the playground's adapter dropdown to test against it.
-
 > `pnpm dev:hosts` starts three dev servers on different domains for cross-origin testing:
 >
 > - `https://app.moderato.tempo.local:3001`
 > - `https://playground.a:5173`
 > - `https://playground.b:5175`
+
+### Embed Reference Implementation
+
+The `embed-ref/` directory contains a minimal, unstyled reference implementation of the embed dialog app. It demonstrates how to build a custom embed using tempodk's `Remote` API.
+
+Select `dialogRefImpl` in the playground's adapter dropdown to test against it.
 
 ## License
 
