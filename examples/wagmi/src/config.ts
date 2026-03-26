@@ -6,7 +6,7 @@ export const config = createConfig({
   chains: [tempoModerato],
   connectors: [
     tempoWallet({
-      host: import.meta.env.VITE_AUTH_HOST ?? 'https://app.moderato.tempo.local:3001/embed',
+      host: import.meta.env.VITE_DIALOG_HOST ?? 'https://app.moderato.tempo.local:3001/embed',
     }),
   ],
   multiInjectedProviderDiscovery: false,

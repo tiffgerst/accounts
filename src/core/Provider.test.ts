@@ -1154,8 +1154,6 @@ describe.each(adapters)('$name', ({ adapter }: (typeof adapters)[number]) => {
 
       expect(provider.store.getState().accessKeys).toMatchInlineSnapshot(`[]`)
     })
-
-
   })
 
   describe('wallet_revokeAccessKey', () => {

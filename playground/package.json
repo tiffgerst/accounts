@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "tsc -b && vp build",
+    "build": "tsc --noEmit && vp build",
+    "check:types": "tsc --noEmit",
     "postinstall": "wrangler types",
     "preview": "vp preview"
   },
