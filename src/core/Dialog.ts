@@ -98,6 +98,7 @@ export function iframe(): Dialog {
       [
         `publickey-credentials-get ${hostUrl.origin}`,
         `publickey-credentials-create ${hostUrl.origin}`,
+        'clipboard-write',
       ].join('; '),
     )
     frame.setAttribute('allowtransparency', 'true')

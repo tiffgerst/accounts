@@ -31,7 +31,10 @@ export const receipt = z.object({
   logs: z.array(log),
   logsBloom: u.hex(),
   root: z.optional(u.hex()),
-  status: u.hex(),
+  status: z.codec(u.hex(), z.enum(['success', 'reverted']), {
+    decode: (value) => (value === '0x1' ? 'success' : 'reverted'),
+    encode: (value) => (value === 'success' ? '0x1' : '0x0'),
+  }),
   to: z.nullable(u.address()),
   transactionHash: u.hex(),
   transactionIndex: u.number(),

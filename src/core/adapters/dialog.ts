@@ -156,7 +156,7 @@ export function dialog(options: dialog.Options = {}): Adapter.Adapter {
         const result = await fn(account, keyAuthorization ?? undefined)
         AccessKey.removePending(account, { store })
         return result
-      } catch (error) {
+      } catch {
         AccessKey.remove(account, { store })
         return undefined
       }
