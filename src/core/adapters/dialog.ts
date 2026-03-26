@@ -157,7 +157,7 @@ export function dialog(options: dialog.Options = {}): Adapter.Adapter {
         AccessKey.removePending(account, { store })
         return result
       } catch (error) {
-        if (AccessKey.isExecutionError(error)) AccessKey.remove(account, { store })
+        AccessKey.remove(account, { store })
         return undefined
       }
     }

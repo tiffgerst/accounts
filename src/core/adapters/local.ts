@@ -103,7 +103,7 @@ export function local(options: local.Options): Adapter.Adapter {
         return result
       } catch (error) {
         if (account.source !== 'accessKey') throw error
-        if (AccessKey.isExecutionError(error)) AccessKey.remove(account, { store })
+        AccessKey.remove(account, { store })
         const root = getAccount({ accessKey: false, signable: true })
         return await fn(root, undefined)
       }

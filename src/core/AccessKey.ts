@@ -4,25 +4,6 @@ import { Account as TempoAccount } from 'viem/tempo'
 
 import type * as Store from './Store.js'
 
-/** Returns `true` if the error is an access key-related error from the Tempo precompile/tx-pool. */
-export function isExecutionError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error)
-  return [
-    'KeyAuthorization',
-    'key authorization',
-    'keychain',
-    'access key',
-    'AccessKey',
-    'UnauthorizedCaller',
-    'KeyAlreadyExists',
-    'KeyNotFound',
-    'KeyExpired',
-    'SpendingLimitExceeded',
-    'KeyAlreadyRevoked',
-    'SignatureTypeMismatch',
-  ].some((p) => message.includes(p))
-}
-
 /** Returns the pending key authorization for an access key account without removing it. */
 export function getPending(
   account: TempoAccount.Account,
