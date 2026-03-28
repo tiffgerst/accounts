@@ -6,8 +6,6 @@ import { Account } from 'viem/tempo'
 export type AdapterType = 'secp256k1' | 'webAuthn' | 'tempoWallet' | 'dialogRefImpl'
 export type DialogMode = 'iframe' | 'popup'
 
-export const isTestnet = import.meta.env.VITE_ENV !== 'mainnet'
-
 export let dialogMode: DialogMode = 'iframe'
 export let provider = createProvider('tempoWallet')
 
@@ -16,18 +14,18 @@ export function createProvider(adapterType: AdapterType) {
     return Provider.create({
       adapter: dialog({
         dialog: dialogMode === 'popup' ? Dialog.popup() : Dialog.iframe(),
-        host: import.meta.env.VITE_DIALOG_HOST || 'https://app.moderato.tempo.local:3001/embed',
+        host: import.meta.env.VITE_WALLET_DIALOG_HOST,
       }),
-      testnet: isTestnet,
+      testnet: process.env.VITE_ENV === 'testnet',
     })
 
   if (adapterType === 'dialogRefImpl')
     return Provider.create({
       adapter: dialog({
         dialog: dialogMode === 'popup' ? Dialog.popup() : Dialog.iframe(),
-        host: 'https://localhost:5174',
+        host: import.meta.env.VITE_REF_DIALOG_HOST,
       }),
-      testnet: isTestnet,
+      testnet: process.env.VITE_ENV === 'testnet',
     })
 
   if (adapterType === 'webAuthn') {
@@ -35,7 +33,7 @@ export function createProvider(adapterType: AdapterType) {
     return Provider.create({
       adapter: webAuthn({ ceremony }),
       feePayerUrl: '/fee-payer',
-      testnet: isTestnet,
+      testnet: process.env.VITE_ENV === 'testnet',
     })
   }
 
@@ -51,7 +49,7 @@ export function createProvider(adapterType: AdapterType) {
       },
     }),
     feePayerUrl: '/fee-payer',
-    testnet: isTestnet,
+    testnet: process.env.VITE_ENV === 'testnet',
   })
 }
 
