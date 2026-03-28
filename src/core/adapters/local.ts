@@ -12,7 +12,7 @@ import * as Adapter from '../Adapter.js'
  *
  * @example
  * ```ts
- * import { local, Provider } from 'tempodk'
+ * import { local, Provider } from 'accounts'
  *
  * const Provider = Provider.create({
  *   adapter: local({

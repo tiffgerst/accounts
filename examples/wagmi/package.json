@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "latest",
-    "tempodk": "latest",
+    "accounts": "latest",
     "react": "latest",
     "react-dom": "latest",
     "viem": "latest",

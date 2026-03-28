@@ -9,9 +9,9 @@
   "dependencies": {
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
+    "accounts": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tempodk": "workspace:*",
     "wagmi": "catalog:"
   },
   "devDependencies": {

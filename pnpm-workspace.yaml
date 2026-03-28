@@ -27,4 +27,4 @@ onlyBuiltDependencies:
   - workerd
 
 overrides:
-  tempodk: workspace:*
+  accounts: workspace:*

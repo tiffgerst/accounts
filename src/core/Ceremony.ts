@@ -88,7 +88,7 @@ export function from(ceremony: Ceremony): Ceremony {
  *
  * @example
  * ```ts
- * import { Ceremony } from 'tempodk'
+ * import { Ceremony } from 'accounts'
  *
  * const ceremony = Ceremony.local()
  * ```
@@ -155,7 +155,7 @@ export declare namespace local {
  *
  * @example
  * ```ts
- * import { Ceremony } from 'tempodk'
+ * import { Ceremony } from 'accounts'
  *
  * const ceremony = Ceremony.server({ url: 'https://example.com/webauthn' })
  * ```

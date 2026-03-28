@@ -115,7 +115,7 @@ export declare namespace from {
  *
  * ```ts
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { Handler } from 'tempodk/server'
+ * import { Handler } from 'accounts/server'
  *
  * export default {
  *   fetch(request) {
@@ -131,7 +131,7 @@ export declare namespace from {
  *
  * ```ts
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { Handler } from 'tempodk/server'
+ * import { Handler } from 'accounts/server'
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
@@ -146,7 +146,7 @@ export declare namespace from {
  *
  * ```ts
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { Handler } from 'tempodk/server'
+ * import { Handler } from 'accounts/server'
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
@@ -163,7 +163,7 @@ export declare namespace from {
  *
  * ```ts
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { Handler } from 'tempodk/server'
+ * import { Handler } from 'accounts/server'
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
@@ -178,7 +178,7 @@ export declare namespace from {
  *
  * ```ts
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { Handler } from 'tempodk/server'
+ * import { Handler } from 'accounts/server'
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
@@ -192,7 +192,7 @@ export declare namespace from {
  *
  * ```ts
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { Handler } from 'tempodk/server'
+ * import { Handler } from 'accounts/server'
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
@@ -206,7 +206,7 @@ export declare namespace from {
  *
  * ```ts
  * import { privateKeyToAccount } from 'viem/accounts'
- * import { Handler } from 'tempodk/server'
+ * import { Handler } from 'accounts/server'
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
@@ -224,7 +224,7 @@ export declare namespace from {
  * import { http } from 'viem'
  * import { privateKeyToAccount } from 'viem/accounts'
  * import { tempo, tempoModerato } from 'viem/chains'
- * import { Handler } from 'tempodk/server'
+ * import { Handler } from 'accounts/server'
  *
  * const handler = Handler.feePayer({
  *   account: privateKeyToAccount('0x...'),
@@ -366,7 +366,7 @@ export declare namespace feePayer {
  *
  * @example
  * ```ts
- * import { Handler, Kv } from 'tempodk/server'
+ * import { Handler, Kv } from 'accounts/server'
  *
  * const handler = Handler.webauthn({
  *   kv: Kv.memory(),

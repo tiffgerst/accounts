@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Remote } from 'tempodk'
+import { Remote } from 'accounts'
 import { useConnection } from 'wagmi'
 
 import { remote } from '../../lib/config.js'

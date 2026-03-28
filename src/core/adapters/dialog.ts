@@ -17,7 +17,7 @@ import * as Rpc from '../zod/rpc.js'
  *
  * @example
  * ```ts
- * import { dialog, Provider } from 'tempodk'
+ * import { dialog, Provider } from 'accounts'
  *
  * const provider = Provider.create({
  *   adapter: dialog(),

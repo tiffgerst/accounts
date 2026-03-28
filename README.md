@@ -1,27 +1,26 @@
-# tempodk
+# Tempo Accounts SDK
 
-Accounts Development Kit for Tempo Wallets & Apps.
+Accounts SDK for Tempo Wallets & Apps.
 
-[Metronome](https://metronome-git-main-tempoxyz.vercel.app/ideas/account-sdk)
 
 ## Install
 
 ```sh
-pnpm i tempodk
+pnpm i accounts
 ```
 
 ## Usage
 
 ### Vanilla JS
 
-You can get set up with tempodk with pure JavaScript by using the
+You can get set up with the Accounts SDK with pure JavaScript by using the
 `Provider` instance.
 
 Internally, the `Provider` utilizes [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963) to inject it's provider instance into
 the page so it can be picked up by wallet connection dialogs on external web applications.
 
 ```tsx
-import { Provider } from 'tempodk'
+import { Provider } from 'accounts'
 
 const provider = Provider.create()
 
@@ -35,7 +34,7 @@ const { accounts } = await provider.request({
 The Provider provides a Viem Client instance via the `getClient` accessor.
 
 ```tsx
-import { Provider } from 'tempodk'
+import { Provider } from 'accounts'
 
 const provider = Provider.create()
 
@@ -49,7 +48,7 @@ Use the `dialog` Wagmi connector to allow your Wagmi application to enable the T
 ```tsx
 import { createConfig, http } from 'wagmi'
 import { tempo } from 'wagmi/chains'
-import { dialog } from 'tempodk/wagmi'
+import { dialog } from 'accounts/wagmi'
 
 export const wagmiConfig = createConfig({
   chains: [tempo],
@@ -90,7 +89,7 @@ pnpm test             # run tests
 
 ### Embed Reference Implementation
 
-The `embed-ref/` directory contains a minimal, unstyled reference implementation of the embed dialog app. It demonstrates how to build a custom embed using tempodk's `Remote` API.
+The `embed-ref/` directory contains a minimal, unstyled reference implementation of the embed dialog app. It demonstrates how to build a custom embed using the Account SDK's `Remote` API.
 
 Select `dialogRefImpl` in the playground's adapter dropdown to test against it.
 

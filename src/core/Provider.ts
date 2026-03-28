@@ -37,7 +37,7 @@ export type Provider = ox_Provider.Provider<{ schema: Schema.Ox }> &
  *
  * @example
  * ```ts
- * import { Provider } from 'tempodk'
+ * import { Provider } from 'accounts'
  *
  * const provider = Provider.create()
  * ```
@@ -540,7 +540,7 @@ export declare namespace create {
     chains?: readonly [Chain, ...Chain[]] | undefined
     /**
      * Fee payer URL for interacting with a service running `Handler.feePayer`
-     * from `tempodk/server`.
+     * from `accounts/server`.
      */
     feePayerUrl?: string | undefined
     /** Enable Machine Payment Protocol (mppx) support. @default false */

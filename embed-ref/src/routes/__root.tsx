@@ -1,6 +1,6 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { reconnect } from '@wagmi/core'
-import { Remote } from 'tempodk'
+import { Remote } from 'accounts'
 
 import { remote, wagmiConfig } from '../lib/config'
 import { router } from '../router'

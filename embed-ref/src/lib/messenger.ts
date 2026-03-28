@@ -1,4 +1,4 @@
-import { Messenger } from 'tempodk'
+import { Messenger } from 'accounts'
 
 /** Initializes the bridge messenger for the embed app (the "remote" side). */
 export function init(): Messenger.Bridge {

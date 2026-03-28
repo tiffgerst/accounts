@@ -1,4 +1,4 @@
-import { tempoWallet } from 'tempodk/wagmi'
+import { tempoWallet } from 'accounts/wagmi'
 import { createConfig, http } from 'wagmi'
 import { tempo, tempoModerato } from 'wagmi/chains'
 

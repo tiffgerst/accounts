@@ -4,7 +4,7 @@ import { defineConfig } from 'vp'
 export default defineConfig({
   resolve: {
     alias: {
-      tempodk: join(import.meta.dirname, './src'),
+      accounts: join(import.meta.dirname, './src'),
     },
   },
   test: {

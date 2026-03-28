@@ -11,8 +11,8 @@
     "isolatedModules": true,
     "outDir": "./dist",
     "paths": {
-      "tempodk": ["../src/index.ts"],
-      "tempodk/*": ["../src/*"]
+      "accounts": ["../src/index.ts"],
+      "accounts/*": ["../src/*"]
     }
   },
   "include": ["src"]

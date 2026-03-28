@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "types": ["vp/client", "node"],
     "paths": {
-      "tempodk/*": ["../src/*"]
+      "accounts/*": ["../src/*"]
     }
   },
   "include": ["src", "worker", "env.d.ts", "worker-configuration.d.ts"]
