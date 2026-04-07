@@ -1,5 +1,5 @@
 {
-  "name": "with-fee-payer-example",
+  "name": "@examples/with-fee-payer-and-webauthn",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -26,7 +26,6 @@
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
     "typescript": "~5.9.3",
-    "vite-plugin-cloudflare-tunnel": "^1.0.12",
     "vite-plus": "latest",
     "wrangler": "catalog:"
   }

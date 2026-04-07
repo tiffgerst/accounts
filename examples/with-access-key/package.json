@@ -1,13 +1,11 @@
 {
-  "name": "with-fee-payer-example",
+  "name": "@examples/with-access-key",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "check:types": "tsc -b",
     "dev": "vp dev",
-    "gen:types": "wrangler types",
-    "postinstall": "[ -f .env ] || cp .env.example .env && pnpm gen:types",
     "build": "tsc -b && vp build",
     "preview": "vp preview"
   },
@@ -20,14 +18,11 @@
     "wagmi": "latest"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "latest",
-    "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
     "typescript": "~5.9.3",
-    "vite-plugin-cloudflare-tunnel": "^1.0.12",
-    "vite-plus": "latest",
-    "wrangler": "catalog:"
+    "vite-plugin-mkcert": "^1.17.10",
+    "vite-plus": "latest"
   }
 }
